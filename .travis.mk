@@ -39,6 +39,13 @@ deps_ubuntu:
 		python-msgpack python-yaml python-argparse python-six python-gevent \
 		lcov ruby
 
+deps_clang_8:
+	echo "deb http://apt.llvm.org/stretch/ llvm-toolchain-stretch-8 main" > /etc/apt/sources.list.d/clang_8.list
+	echo "deb-src http://apt.llvm.org/stretch/ llvm-toolchain-stretch-8 main" >> /etc/apt/sources.list.d/clang_8.list
+	wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+	apt-get -y update
+	apt-get -y install clang-8
+
 test_ubuntu: deps_ubuntu
 	cmake . -DCMAKE_BUILD_TYPE=RelWithDebInfoWError ${CMAKE_EXTRA_PARAMS}
 	make -j8

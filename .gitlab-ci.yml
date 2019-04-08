@@ -1,0 +1,42 @@
+image: packpack/packpack:debian-stretch
+
+test_release:
+  tags:
+    - docker
+  script:
+    - make -f .travis.mk test_ubuntu
+
+test_debug:
+  tags:
+    - docker
+  script:
+    - make -f .travis.mk coverage_ubuntu
+
+test_clang_release:
+  tags:
+    - docker
+  variables:
+    CC: clang-8
+    CXX: clang++-8
+  before_script:
+    - make -f .travis.mk deps_clang_8
+  script:
+    - make -f .travis.mk test_ubuntu
+
+test_clang_debug:
+  tags:
+    - docker
+  variables:
+    CC: clang-8
+    CXX: clang++-8
+  before_script:
+    - make -f .travis.mk deps_clang_8
+  script:
+    - make -f .travis.mk coverage_ubuntu
+
+# No OS X workers.
+#test_osx_release:
+#  tags:
+#    - osx
+#  script:
+#    - make -f .travis.mk test_osx
