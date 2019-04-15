@@ -26,8 +26,8 @@ ch:get()
 
 errinj.set("ERRINJ_RELAY_FINAL_SLEEP", false)
 test_run:cmd("switch replica1")
-cnt = box.space.test.index[0]:count()
-box.space.test.index.primary:max()[1] == cnt - 1
+cnt = box.space.test.index[0]:count() max = box.space.test.index.primary:max()[1]
+cnt - 1 == max or {cnt - 1, max} -- true
 test_run:cmd("switch default")
 
 replica_set.drop_all(test_run)
