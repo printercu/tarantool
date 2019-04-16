@@ -237,14 +237,12 @@ operatorMask(int op)
  *                    pattern prefix.
  * @param pisComplete True if the only wildcard is '%' in the
  *                    last character.
- * @param pnoCase     True if case insensitive.
- *
  * @retval True if the given expr is a LIKE operator & is
  *         optimizable using inequality constraints.
  */
 static int
 like_optimization_is_valid(Parse *pParse, Expr *pExpr, Expr **ppPrefix,
-			   int *pisComplete, int *pnoCase)
+			   int *pisComplete)
 {
 	/* String on RHS of LIKE operator. */
 	const char *z = 0;
@@ -264,7 +262,7 @@ like_optimization_is_valid(Parse *pParse, Expr *pExpr, Expr **ppPrefix,
 	/* Result code to return. */
 	int rc;
 
-	if (!sql_is_like_func(db, pExpr, pnoCase)) {
+	if (!sql_is_like_func(db, pExpr)) {
 		return 0;
 	}
 	pList = pExpr->x.pList;
@@ -1156,7 +1154,7 @@ exprAnalyze(SrcList * pSrc,	/* the FROM clause */
 	 */
 	if (pWC->op == TK_AND &&
 	    like_optimization_is_valid(pParse, pExpr, &pStr1,
-				       &isComplete, &noCase)) {
+				       &isComplete)) {
 		Expr *pLeft;
 		/* Copy of pStr1 - RHS of LIKE operator. */
 		Expr *pStr2;
