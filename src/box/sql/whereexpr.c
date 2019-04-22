@@ -222,19 +222,40 @@ operatorMask(int op)
 }
 
 /**
+ * Skip TK_COLLATE in @a expr and save root collation name to @a
+ * coll_name if any.
+ *
+ * Wrapper for sqlExprSkipCollate().
+ *
+ * @param expr Expression.
+ * @param[out] coll_name Collation name.
+ * @retval Pointer to non-collate node.
+ */
+static struct Expr*
+skip_coll_and_get_name(struct Expr* expr, const char **coll_name)
+{
+	struct Expr *ret = sqlExprSkipCollate(expr);
+	if (ret != expr) {
+		assert(expr->op == TK_COLLATE);
+		*coll_name = expr->u.zToken;
+	} else {
+		*coll_name = NULL;
+	}
+	return ret;
+}
+
+/**
  * Check to see if the given expression is a LIKE operator that
  * can be optimized using inequality constraints.
  *
  * In order for the operator to be optimizible, the RHS must be a
  * string literal that does not begin with a wildcard. The LHS
  * must be a column that may only be NULL, a string, or a BLOB,
- * never a number. The collating sequence for the column on the
- * LHS must be appropriate for the operator.
+ * never a number.
  *
  * @param pParse      Parsing and code generating context.
  * @param pExpr       Test this expression.
- * @param ppPrefix    Pointer to TK_STRING expression with
- *                    pattern prefix.
+ * @param ppPrefix    Pointer to expression with pattern prefix.
  * @param pisComplete True if the only wildcard is '%' in the
  *                    last character.
  * @retval True if the given expr is a LIKE operator & is
@@ -266,7 +287,9 @@ like_optimization_is_valid(Parse *pParse, Expr *pExpr, Expr **ppPrefix,
 		return 0;
 	}
 	pList = pExpr->x.pList;
-	pLeft = pList->a[1].pExpr;
+	const char *l_coll_name = NULL;
+	pLeft = skip_coll_and_get_name(pList->a[1].pExpr, &l_coll_name);
+
 	/* Value might be numeric */
 	if (pLeft->op != TK_COLUMN ||
 	    sql_expr_type(pLeft) != FIELD_TYPE_STRING) {
@@ -278,7 +301,34 @@ like_optimization_is_valid(Parse *pParse, Expr *pExpr, Expr **ppPrefix,
 	}
 	assert(pLeft->iColumn != (-1));	/* Because IPK never has AFF_TEXT */
 
-	pRight = sqlExprSkipCollate(pList->a[0].pExpr);
+	const char *r_coll_name = NULL;
+	pRight = skip_coll_and_get_name(pList->a[0].pExpr, &r_coll_name);
+
+	/* Only for "binary" and "unicode_ci" collations. */
+	if (r_coll_name != NULL) {
+		if (strcmp(r_coll_name, "binary") != 0 &&
+		    strcmp(r_coll_name, "unicode_ci") != 0)
+			return 0;
+	} else if (l_coll_name != NULL) {
+		if (strcmp(l_coll_name, "binary") != 0 &&
+		    strcmp(l_coll_name, "unicode_ci") != 0)
+			return 0;
+	} else {
+		/*
+		 * If both arguments haven't <COLLATE> then we
+		 * should check implicit collation.
+		 */
+		struct field_def *field_def = pLeft->space_def->fields +
+					      pLeft->iColumn;
+		uint32_t none_id = coll_by_name("none", strlen("none"))->id;
+		uint32_t u_ci_id =
+			coll_by_name("unicode_ci", strlen("unicode_ci"))->id;
+		uint32_t bin_id = coll_by_name("binary", strlen("binary"))->id;
+		if (field_def->coll_id != none_id && field_def->coll_id !=
+		    u_ci_id && field_def->coll_id != bin_id)
+			return 0;
+	}
+
 	op = pRight->op;
 	if (op == TK_VARIABLE) {
 		Vdbe *pReprepare = pParse->pReprepare;
@@ -308,6 +358,15 @@ like_optimization_is_valid(Parse *pParse, Expr *pExpr, Expr **ppPrefix,
 				pParse->is_aborted = true;
 			else
 				pPrefix->u.zToken[cnt] = 0;
+			/*
+			 * If <COLLATE> was typed to <LIKE>'s RHS
+			 * add it result expression.
+			 */
+			if (r_coll_name != NULL)
+				pPrefix =
+					sqlExprAddCollateString(pParse,
+								pPrefix,
+								r_coll_name);
 			*ppPrefix = pPrefix;
 			if (op == TK_VARIABLE) {
 				Vdbe *v = pParse->pVdbe;
@@ -977,8 +1036,6 @@ exprAnalyze(SrcList * pSrc,	/* the FROM clause */
 	Expr *pStr1 = 0;
 	/* RHS of LIKE ends with wildcard. */
 	int isComplete = 0;
-	/* uppercase equivalent to lowercase. */
-	int noCase = 0;
 	/* Top-level operator. pExpr->op. */
 	int op;
 	/* Parsing context. */
@@ -1143,18 +1200,13 @@ exprAnalyze(SrcList * pSrc,	/* the FROM clause */
 	 * A like pattern of the form "x LIKE 'aBc%'" is changed
 	 * into constraints:
 	 *
-	 *          x>='ABC' AND x<'abd' AND x LIKE 'aBc%'
+	 *          x>='aBc' AND x<'abd' AND x LIKE 'aBc%'
 	 *
 	 * The last character of the prefix "abc" is incremented
-	 * to form the termination condition "abd". If case is
-	 * not significant (the default for LIKE) then the
-	 * lower-bound is made all uppercase and the upper-bound
-	 * is made all lowercase so that the bounds also work
-	 * when comparing BLOBs.
+	 * to form the termination condition "abd".
 	 */
 	if (pWC->op == TK_AND &&
-	    like_optimization_is_valid(pParse, pExpr, &pStr1,
-				       &isComplete)) {
+	    like_optimization_is_valid(pParse, pExpr, &pStr1, &isComplete)) {
 		Expr *pLeft;
 		/* Copy of pStr1 - RHS of LIKE operator. */
 		Expr *pStr2;
@@ -1167,57 +1219,22 @@ exprAnalyze(SrcList * pSrc,	/* the FROM clause */
 		pLeft = pExpr->x.pList->a[1].pExpr;
 		pStr2 = sqlExprDup(db, pStr1, 0);
 
-		/*
-		 * Convert the lower bound to upper-case and the
-		 * upper bound to lower-case (upper-case is less
-		 * than lower-case in ASCII) so that the range
-		 * constraints also work for BLOBs.
-		 */
-		if (noCase && !pParse->db->mallocFailed) {
-			int i;
-			char c;
-			pTerm->wtFlags |= TERM_LIKE;
-			for (i = 0; (c = pStr1->u.zToken[i]) != 0; i++) {
-				pStr1->u.zToken[i] = sqlToupper(c);
-				pStr2->u.zToken[i] = sqlTolower(c);
-			}
-		}
-
 		if (!db->mallocFailed) {
 			u8 c, *pC;	/* Last character before the first wildcard */
-			pC = (u8 *) & pStr2->u.
-			    zToken[sqlStrlen30(pStr2->u.zToken) - 1];
+			/* pStr2 can contain COLLATE nodes. */
+			struct Expr *real_str = sqlExprSkipCollate(pStr2);
+			pC = (u8 *) & real_str->u.
+			    zToken[sqlStrlen30(real_str->u.zToken) - 1];
 			c = *pC;
-			if (noCase) {
-				/* The point is to increment the last character before the first
-				 * wildcard.  But if we increment '@', that will push it into the
-				 * alphabetic range where case conversions will mess up the
-				 * inequality.  To avoid this, make sure to also run the full
-				 * LIKE on all candidate expressions by clearing the isComplete flag
-				 */
-				if (c == 'A' - 1)
-					isComplete = 0;
-				c = sqlUpperToLower[c];
-			}
 			*pC = c + 1;
 		}
 		pNewExpr1 = sqlExprDup(db, pLeft, 0);
-		if (noCase) {
-			pNewExpr1 =
-				sqlExprAddCollateString(pParse, pNewExpr1,
-							    "unicode_ci");
-		}
 		pNewExpr1 = sqlPExpr(pParse, TK_GE, pNewExpr1, pStr1);
 		transferJoinMarkings(pNewExpr1, pExpr);
 		idxNew1 = whereClauseInsert(pWC, pNewExpr1, wtFlags);
 		testcase(idxNew1 == 0);
 		exprAnalyze(pSrc, pWC, idxNew1);
 		pNewExpr2 = sqlExprDup(db, pLeft, 0);
-		if (noCase) {
-			pNewExpr2 =
-				sqlExprAddCollateString(pParse, pNewExpr2,
-							    "unicode_ci");
-		}
 		pNewExpr2 = sqlPExpr(pParse, TK_LT, pNewExpr2, pStr2);
 		transferJoinMarkings(pNewExpr2, pExpr);
 		idxNew2 = whereClauseInsert(pWC, pNewExpr2, wtFlags);

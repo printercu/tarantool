@@ -1356,7 +1356,7 @@ enum trim_side_mask {
   {nArg, SQL_FUNC_SLOCHNG|(bNC*SQL_FUNC_NEEDCOLL), \
    pArg, 0, xFunc, 0, #zName, {SQL_AFF_STRING, {0}}, false}
 #define LIKEFUNC(zName, nArg, arg, flags, type) \
-  {nArg, SQL_FUNC_CONSTANT|flags, \
+  {nArg, SQL_FUNC_NEEDCOLL|SQL_FUNC_CONSTANT|flags, \
    (void *)(SQL_INT_TO_PTR(arg)), 0, likeFunc, 0, #zName, {0}, type, false }
 #define AGGREGATE(zName, nArg, arg, nc, xStep, xFinal, type) \
   {nArg, (nc*SQL_FUNC_NEEDCOLL), \
