@@ -1,0 +1,46 @@
+FROM ubuntu:18.04
+
+RUN apt-get -y update && apt-get install -y -f \
+    numactl gcc libc6-dev zlib1g-dev make libmysqlclient-dev \
+    ssh vim git dh-autoreconf pkg-config libicu-dev \
+    build-essential cmake coreutils sed libreadline-dev \
+    libncurses5-dev libyaml-dev libssl-dev libcurl4-openssl-dev \
+    libunwind-dev python python-pip python-setuptools python-dev \
+    python-msgpack python-yaml python-argparse python-six python-gevent \
+    gdb net-tools psmisc
+
+# benchmark-runners
+# !!! TEMPORARY !!!
+#RUN git clone https://gitlab.com/tarantool/tarantool-benchmarks-runner.git \
+#    /opt/runners && \
+COPY runners /opt/runners
+
+# tarantool-c
+RUN git clone --recursive https://github.com/tarantool/tarantool-c.git \
+    /opt/tarantool-c
+WORKDIR /opt/tarantool-c/third_party/msgpuck/
+RUN cmake . && make && make install
+WORKDIR /opt/tarantool-c
+RUN cmake . && make -j && make install
+
+# msgpack-c
+RUN git clone https://github.com/msgpack/msgpack-c.git /opt/msgpack-c
+WORKDIR /opt/msgpack-c
+RUN cmake . && make -j && make install
+
+# YCSB
+RUN git clone https://github.com/brianfrankcooper/YCSB.git /opt/ycsb
+RUN apt-get update -y && apt-get install gtk-update-icon-cache=3.22.30-1ubuntu3 || true
+RUN apt-get install --fix-missing -y -f default-jdk maven
+WORKDIR /opt/ycsb
+RUN mvn -pl com.yahoo.ycsb:tarantool-binding -am clean package
+
+# nosqlbench
+RUN git clone --recursive https://github.com/tarantool/nosqlbench.git \
+        /opt/nosqlbench
+WORKDIR /opt/nosqlbench
+RUN git submodule foreach --recursive
+RUN git pull origin master
+RUN apt-get install -y -f libev-dev
+RUN cmake . && make -j
+
