@@ -1,0 +1,64 @@
+stages:
+  - test
+  - deploy
+  - cleanup
+
+variables:
+  GITLAB_MAKE: "make -f .gitlab.mk"
+  IMAGE_PERF: "${CI_REGISTRY}/${CI_PROJECT_PATH}/perf/ubuntu-bionic:perf_master"
+  IMAGE_PERF_BUILT: "${CI_REGISTRY}/${CI_PROJECT_PATH}/perf_tmp/ubuntu-bionic:perf_${CI_COMMIT_SHORT_SHA}"
+
+perf_bootstrap:
+  stage: test
+  tags:
+    - perf
+  script:
+    - ${GITLAB_MAKE} docker_perf_bootstrap
+
+perf_sysbench:
+  image: ${IMAGE_PERF_BUILT}
+  stage: deploy
+  tags:
+    - docker_perf
+  script:
+    - ${GITLAB_MAKE} perf_sysbench
+
+perf_tpcc:
+  image: ${IMAGE_PERF_BUILT}
+  stage: deploy
+  tags:
+    - docker_perf
+  script:
+    - ${GITLAB_MAKE} perf_tpcc
+
+perf_ycsb:
+  image: ${IMAGE_PERF_BUILT}
+  stage: deploy
+  tags:
+    - docker_perf
+  script:
+    - ${GITLAB_MAKE} perf_ycsb
+
+perf_nosqlbench:
+  image: ${IMAGE_PERF_BUILT}
+  stage: deploy
+  tags:
+    - docker_perf
+  script:
+    - ${GITLAB_MAKE} perf_nosqlbench
+
+perf_cbench:
+  image: ${IMAGE_PERF_BUILT}
+  stage: deploy
+  tags:
+    - docker_perf
+  script:
+    - ${GITLAB_MAKE} perf_cbench
+
+remove_images:
+  stage: cleanup
+  when: always
+  tags:
+    - perf
+  script:
+    - ${GITLAB_MAKE} docker_perf_tmp_image_remove
