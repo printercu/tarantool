@@ -3145,7 +3145,7 @@ do_expr_test("e_expr-31.2.3", [[
 do_expr_test("e_expr-31.2.4", [[
   CAST(9223372036854775809.0 AS INT)
 ]], "integer", 9223372036854775807LL)
--- EVIDENCE-OF: R-09295-61337 Casting a TEXT or BLOB value into NUMERIC
+-- EVIDENCE-OF: R-09295-61337 Casting a STRING or BLOB value into NUMERIC
 -- first does a forced conversion into REAL but then further converts the
 -- result into INTEGER if and only if the conversion from REAL to INTEGER
 -- is lossless and reversible.

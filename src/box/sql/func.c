@@ -249,7 +249,7 @@ position_func(struct sql_context *context, int argc, struct Mem **argv)
 	if (haystack_type != MP_STR && haystack_type != MP_BIN)
 		inconsistent_type_arg = haystack;
 	if (inconsistent_type_arg != NULL) {
-		diag_set(ClientError, ER_INCONSISTENT_TYPES, "TEXT or BLOB",
+		diag_set(ClientError, ER_INCONSISTENT_TYPES, "STRING or BLOB",
 			 mem_type_to_str(inconsistent_type_arg));
 		context->is_aborted = true;
 		return;
@@ -874,8 +874,8 @@ sql_strlike_ci(const char *zPattern, const char *zStr, unsigned int esc)
  *
  * are implemented as like(B,A).
  *
- * Both arguments (A and B) must be of type TEXT. If one arguments
- * is NULL then result is NULL as well.
+ * Both arguments (A and B) must be of type STRING. If one
+ * arguments is NULL then result is NULL as well.
  */
 static void
 likeFunc(sql_context *context, int argc, sql_value **argv)
@@ -893,7 +893,7 @@ likeFunc(sql_context *context, int argc, sql_value **argv)
 		char *inconsistent_type = rhs_type != MP_STR ?
 					  mem_type_to_str(argv[0]) :
 					  mem_type_to_str(argv[1]);
-		diag_set(ClientError, ER_INCONSISTENT_TYPES, "TEXT",
+		diag_set(ClientError, ER_INCONSISTENT_TYPES, "STRING",
 			 inconsistent_type);
 		context->is_aborted = true;
 		return;

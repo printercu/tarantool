@@ -45,7 +45,7 @@ enum {
 };
 
 /*
- * The maximum length of a TEXT or BLOB in bytes.   This also
+ * The maximum length of a STRING or BLOB in bytes.   This also
  * limits the size of a row in a table or index.
  *
  * The hard limit is the ability of a 32-bit signed integer

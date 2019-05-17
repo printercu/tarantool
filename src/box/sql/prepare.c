@@ -112,7 +112,7 @@ sqlPrepare(sql * db,	/* Database handle. */
 			/*  0 */ "addr",
 			/*  1 */ "INTEGER",
 			/*  2 */ "opcode",
-			/*  3 */ "TEXT",
+			/*  3 */ "STRING",
 			/*  4 */ "p1",
 			/*  5 */ "INTEGER",
 			/*  6 */ "p2",
@@ -120,11 +120,11 @@ sqlPrepare(sql * db,	/* Database handle. */
 			/*  8 */ "p3",
 			/*  9 */ "INTEGER",
 			/* 10 */ "p4",
-			/* 11 */ "TEXT",
+			/* 11 */ "STRING",
 			/* 12 */ "p5",
-			/* 13 */ "TEXT",
+			/* 13 */ "STRING",
 			/* 14 */ "comment",
-			/* 15 */ "TEXT",
+			/* 15 */ "STRING",
 			/* 16 */ "selectid",
 			/* 17 */ "INTEGER",
 			/* 18 */ "order",
@@ -132,7 +132,7 @@ sqlPrepare(sql * db,	/* Database handle. */
 			/* 20 */ "from",
 			/* 21 */ "INTEGER",
 			/* 22 */ "detail",
-			/* 23 */ "TEXT",
+			/* 23 */ "STRING",
 		};
 
 		int name_first, name_count;

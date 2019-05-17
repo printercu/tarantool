@@ -170,7 +170,7 @@ execute('SELECT ?, ?, ?, ?, ?', {'abc', -123.456, msgpack.NULL, true, false})
 ---
 - metadata:
   - name: '?'
-    type: TEXT
+    type: STRING
   - name: '?'
     type: NUMERIC
   - name: '?'

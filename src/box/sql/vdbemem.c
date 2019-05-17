@@ -811,7 +811,7 @@ mem_set_bool(struct Mem *mem, bool value)
 
 /*
  * Delete any previous value and set the value stored in *pMem to val,
- * manifest type REAL.
+ * manifest type NUMBER.
  */
 void
 sqlVdbeMemSetDouble(Mem * pMem, double val)
@@ -824,7 +824,7 @@ sqlVdbeMemSetDouble(Mem * pMem, double val)
 }
 
 /*
- * Return true if the Mem object contains a TEXT or BLOB that is
+ * Return true if the Mem object contains a STRING or BLOB that is
  * too large - whose size exceeds SQL_MAX_LENGTH.
  */
 int

@@ -169,7 +169,7 @@ vdbe_emit_pragma_status(struct Parse *parse)
 
 	sqlVdbeSetNumCols(v, 2);
 	sqlVdbeSetColName(v, 0, COLNAME_NAME, "pragma_name", SQL_STATIC);
-	sqlVdbeSetColName(v, 0, COLNAME_DECLTYPE, "TEXT", SQL_STATIC);
+	sqlVdbeSetColName(v, 0, COLNAME_DECLTYPE, "STRING", SQL_STATIC);
 	sqlVdbeSetColName(v, 1, COLNAME_NAME, "pragma_value", SQL_STATIC);
 	sqlVdbeSetColName(v, 1, COLNAME_DECLTYPE, "INTEGER", SQL_STATIC);
 

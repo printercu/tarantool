@@ -898,7 +898,7 @@ sql_bind_type(struct Vdbe *v, uint32_t position, const char *type)
 }
 
 /*
- * Bind a text or BLOB value.
+ * Bind a STRING or BLOB value.
  */
 static int
 bindText(sql_stmt * pStmt,	/* The statement to bind against */
@@ -920,7 +920,7 @@ bindText(sql_stmt * pStmt,	/* The statement to bind against */
 	pVar = &p->aVar[i - 1];
 	if (sqlVdbeMemSetStr(pVar, zData, nData, 1, xDel) != 0)
 		return -1;
-	return sql_bind_type(p, i, "TEXT");
+	return sql_bind_type(p, i, "STRING");
 }
 
 /*

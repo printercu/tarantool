@@ -327,7 +327,7 @@ mem_apply_type(struct Mem *record, enum field_type type)
 		return sqlVdbeMemRealify(record);
 	case FIELD_TYPE_STRING:
 		/*
-		 * Only attempt the conversion to TEXT if there is
+		 * Only attempt the conversion to STRING if there is
 		 * an integer or real representation (BLOB and
 		 * NULL do not get converted).
 		 */
@@ -583,11 +583,11 @@ mem_type_to_str(const struct Mem *p)
 	case MEM_Null:
 		return "NULL";
 	case MEM_Str:
-		return "TEXT";
+		return "STRING";
 	case MEM_Int:
 		return "INTEGER";
 	case MEM_Real:
-		return "REAL";
+		return "NUMBER";
 	case MEM_Blob:
 		return "BLOB";
 	case MEM_Bool:
@@ -1462,7 +1462,7 @@ case OP_ResultRow: {
  * to avoid a memcpy().
  *
  * Concatenation operator accepts only arguments of string-like
- * types (i.e. TEXT and BLOB).
+ * types (i.e. STRING and BLOB).
  */
 case OP_Concat: {           /* same as TK_CONCAT, in1, in2, out3 */
 	i64 nByte;
@@ -1485,7 +1485,7 @@ case OP_Concat: {           /* same as TK_CONCAT, in1, in2, out3 */
 		char *inconsistent_type = str_type_p1 == 0 ?
 					  mem_type_to_str(pIn1) :
 					  mem_type_to_str(pIn2);
-		diag_set(ClientError, ER_INCONSISTENT_TYPES, "TEXT or BLOB",
+		diag_set(ClientError, ER_INCONSISTENT_TYPES, "STRING or BLOB",
 			 inconsistent_type);
 		goto abort_due_to_error;
 	}
@@ -1938,11 +1938,11 @@ case OP_Realify: {                  /* in1 */
  * Force the value in register P1 to be the type defined by P2.
  *
  * <ul>
- * <li value="97"> TEXT
+ * <li value="97"> STRING
  * <li value="98"> BLOB
  * <li value="99"> NUMERIC
  * <li value="100"> INTEGER
- * <li value="101"> REAL
+ * <li value="101"> NUMBER
  * </ul>
  *
  * A NULL value is not changed by this routine.  It remains NULL.

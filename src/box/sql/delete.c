@@ -585,7 +585,7 @@ sql_generate_index_key(struct Parse *parse, struct index *index, int cursor,
 		 * If the column type is NUMBER but the number
 		 * is an integer, then it might be stored in the
 		 * table as an integer (using a compact
-		 * representation) then converted to REAL by an
+		 * representation) then converted to NUMBER by an
 		 * OP_Realify opcode. But we are getting
 		 * ready to store this value back into an index,
 		 * where it should be converted by to INTEGER

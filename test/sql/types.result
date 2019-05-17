@@ -152,33 +152,33 @@ sp:drop()
 --
 box.execute("SELECT 'abc' || 1;")
 ---
-- error: 'Inconsistent types: expected TEXT or BLOB got INTEGER'
+- error: 'Inconsistent types: expected STRING or BLOB got INTEGER'
 ...
 box.execute("SELECT 'abc' || 1.123;")
 ---
-- error: 'Inconsistent types: expected TEXT or BLOB got REAL'
+- error: 'Inconsistent types: expected STRING or BLOB got NUMBER'
 ...
 box.execute("SELECT 1 || 'abc';")
 ---
-- error: 'Inconsistent types: expected TEXT or BLOB got INTEGER'
+- error: 'Inconsistent types: expected STRING or BLOB got INTEGER'
 ...
 box.execute("SELECT 1.123 || 'abc';")
 ---
-- error: 'Inconsistent types: expected TEXT or BLOB got REAL'
+- error: 'Inconsistent types: expected STRING or BLOB got NUMBER'
 ...
 box.execute("SELECt 'a' || 'b' || 1;")
 ---
-- error: 'Inconsistent types: expected TEXT or BLOB got INTEGER'
+- error: 'Inconsistent types: expected STRING or BLOB got INTEGER'
 ...
 -- What is more, they must be of the same type.
 --
 box.execute("SELECT 'abc' || randomblob(5);")
 ---
-- error: 'Inconsistent types: expected TEXT got BLOB'
+- error: 'Inconsistent types: expected STRING got BLOB'
 ...
 box.execute("SELECT randomblob(5) || 'x';")
 ---
-- error: 'Inconsistent types: expected BLOB got TEXT'
+- error: 'Inconsistent types: expected BLOB got STRING'
 ...
 -- Result of BLOBs concatenation must be BLOB.
 --
@@ -202,15 +202,15 @@ box.execute("INSERT INTO t1 VALUES (randomblob(5));")
 ...
 box.execute("SELECT * FROM t1 WHERE s LIKE 'blob';")
 ---
-- error: 'Inconsistent types: expected TEXT got BLOB'
+- error: 'Inconsistent types: expected STRING got BLOB'
 ...
 box.execute("SELECT * FROM t1 WHERE 'blob' LIKE s;")
 ---
-- error: 'Inconsistent types: expected TEXT got BLOB'
+- error: 'Inconsistent types: expected STRING got BLOB'
 ...
 box.execute("SELECT * FROM t1 WHERE 'blob' LIKE x'0000';")
 ---
-- error: 'Inconsistent types: expected TEXT got BLOB'
+- error: 'Inconsistent types: expected STRING got BLOB'
 ...
 box.execute("SELECT s LIKE NULL FROM t1;")
 ---
@@ -230,11 +230,11 @@ box.execute("INSERT INTO t1 VALUES (1);")
 ...
 box.execute("SELECT * FROM t1 WHERE s LIKE 'int';")
 ---
-- error: 'Inconsistent types: expected TEXT got INTEGER'
+- error: 'Inconsistent types: expected STRING got INTEGER'
 ...
 box.execute("SELECT * FROM t1 WHERE 'int' LIKE 4;")
 ---
-- error: 'Inconsistent types: expected TEXT got INTEGER'
+- error: 'Inconsistent types: expected STRING got INTEGER'
 ...
 box.execute("SELECT NULL LIKE s FROM t1;")
 ---
@@ -359,11 +359,11 @@ box.execute("SELECT 1 = true;")
 ...
 box.execute("SELECT 'abc' = true;")
 ---
-- error: 'Type mismatch: can not convert TEXT to boolean'
+- error: 'Type mismatch: can not convert STRING to boolean'
 ...
 box.execute("SELECT 1.123 > true;")
 ---
-- error: 'Type mismatch: can not convert REAL to boolean'
+- error: 'Type mismatch: can not convert NUMBER to boolean'
 ...
 box.execute("SELECT true IN (1, 'abc', true)")
 ---
@@ -393,7 +393,7 @@ box.execute("SELECT 1 LIMIT 1 OFFSET true;")
 ...
 box.execute("SELECT 'abc' || true;")
 ---
-- error: 'Inconsistent types: expected TEXT or BLOB got BOOLEAN'
+- error: 'Inconsistent types: expected STRING or BLOB got BOOLEAN'
 ...
 -- Boolean can take part in arithmetic operations.
 --
@@ -895,11 +895,11 @@ box.execute("INSERT INTO t1 VALUES (3, 'abc'), (4, 12.5);")
 ...
 box.execute("SELECT s FROM t1 WHERE s = true;")
 ---
-- error: 'Type mismatch: can not convert TEXT to boolean'
+- error: 'Type mismatch: can not convert STRING to boolean'
 ...
 box.execute("SELECT s FROM t1 WHERE s < true;")
 ---
-- error: 'Type mismatch: can not convert TEXT to boolean'
+- error: 'Type mismatch: can not convert STRING to boolean'
 ...
 box.execute("SELECT s FROM t1 WHERE s IN (true, 1, 'abcd')")
 ---
@@ -965,4 +965,30 @@ box.execute('SELECT ?', {true})
     type: BOOLEAN
   rows:
   - [true]
+...
+--
+-- gh-4192: Introduce STRING and NUMBER aliases for TEXT and
+--          REAL types.
+--
+box.execute("CREATE TABLE t1 (id STRING PRIMARY KEY);")
+---
+- row_count: 1
+...
+box.execute("SELECT * FROM t1").metadata[1].type == 'string'
+---
+- true
+...
+box.execute("CREATE TABLE t2 (id NUMBER PRIMARY KEY);")
+---
+- row_count: 1
+...
+box.execute("SELECT * FROM t2").metadata[1].type == 'number'
+---
+- true
+...
+box.space.T1:drop()
+---
+...
+box.space.T2:drop()
+---
 ...

@@ -234,3 +234,15 @@ box.execute('SELECT \'9223372036854\' + 1;')
 
 -- Fix BOOLEAN bindings.
 box.execute('SELECT ?', {true})
+
+
+--
+-- gh-4192: Introduce STRING and NUMBER aliases for TEXT and
+--          REAL types.
+--
+box.execute("CREATE TABLE t1 (id STRING PRIMARY KEY);")
+box.execute("SELECT * FROM t1").metadata[1].type == 'string'
+box.execute("CREATE TABLE t2 (id NUMBER PRIMARY KEY);")
+box.execute("SELECT * FROM t2").metadata[1].type == 'number'
+box.space.T1:drop()
+box.space.T2:drop()

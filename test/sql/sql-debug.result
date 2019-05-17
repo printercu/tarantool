@@ -34,7 +34,7 @@ box.execute('PRAGMA')
 ---
 - metadata:
   - name: pragma_name
-    type: TEXT
+    type: STRING
   - name: pragma_value
     type: INTEGER
   rows:
