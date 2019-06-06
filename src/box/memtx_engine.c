@@ -1126,9 +1126,36 @@ memtx_tuple_delete(struct tuple_format *format, struct tuple *tuple)
 		smfree_delayed(&memtx->alloc, memtx_tuple, total);
 }
 
+void
+metmx_tuple_chunk_delete(struct tuple_format *format,
+			 struct tuple_chunk *tuple_chunk)
+{
+	struct memtx_engine *memtx = (struct memtx_engine *)format->engine;
+	uint32_t sz = tuple_chunk_sz(tuple_chunk->data_sz);
+	smfree(&memtx->alloc, tuple_chunk, sz);
+}
+
+struct tuple_chunk *
+memtx_tuple_chunk_new(struct tuple_format *format, struct tuple *tuple,
+		      uint32_t data_sz)
+{
+	struct memtx_engine *memtx = (struct memtx_engine *)format->engine;
+	uint32_t sz = tuple_chunk_sz(data_sz);
+	struct tuple_chunk *tuple_chunk =
+		(struct tuple_chunk *) smalloc(&memtx->alloc, sz);
+	if (tuple == NULL) {
+		diag_set(OutOfMemory, sz, "smalloc", "tuple");
+		return NULL;
+	}
+	tuple_chunk->data_sz = data_sz;
+	return tuple_chunk;
+}
+
 struct tuple_format_vtab memtx_tuple_format_vtab = {
 	memtx_tuple_delete,
 	memtx_tuple_new,
+	metmx_tuple_chunk_delete,
+	memtx_tuple_chunk_new,
 };
 
 /**

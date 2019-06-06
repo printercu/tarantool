@@ -64,6 +64,7 @@ enum { TUPLE_INDEX_BASE = 1 };
 enum { TUPLE_OFFSET_SLOT_NIL = INT32_MAX };
 
 struct tuple;
+struct tuple_chunk;
 struct tuple_format;
 struct coll;
 
@@ -82,6 +83,14 @@ struct tuple_format_vtab {
 	struct tuple*
 	(*tuple_new)(struct tuple_format *format, const char *data,
 	             const char *end);
+	/** Free a tuple_chunk allocated for given tuple. */
+	void
+	(*tuple_chunk_delete)(struct tuple_format *format,
+			      struct tuple_chunk *tuple_chunk);
+	/** Allocate a new tuple_chunk for given tuple. */
+	struct tuple_chunk *
+	(*tuple_chunk_new)(struct tuple_format *format, struct tuple *tuple,
+			   uint32_t data_sz);
 };
 
 /** Tuple field meta information for tuple_format. */

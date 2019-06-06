@@ -67,6 +67,8 @@ runtime_tuple_new(struct tuple_format *format, const char *data, const char *end
 static struct tuple_format_vtab tuple_format_runtime_vtab = {
 	runtime_tuple_delete,
 	runtime_tuple_new,
+	NULL,
+	NULL,
 };
 
 static struct tuple *
@@ -784,4 +786,10 @@ mp_str(const char *data)
 	if (mp_snprint(buf, TT_STATIC_BUF_LEN, data) < 0)
 		return "<failed to format message pack>";
 	return buf;
+}
+
+uint32_t
+tuple_chunk_sz(uint32_t data_sz)
+{
+	return sizeof(struct tuple_chunk) + data_sz;
 }
