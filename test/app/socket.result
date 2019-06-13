@@ -945,6 +945,7 @@ sc:close()
 socket.tcp_connect('127.0.0.1', 80, 0.00000000001)
 ---
 - null
+- timed out
 ...
 -- AF_INET
 s = socket('AF_INET', 'SOCK_STREAM', 'tcp')
@@ -1664,7 +1665,7 @@ fio.stat(path) == nil
 { socket.tcp_connect('abrakadabra#123') == nil, errno.strerror() }
 ---
 - - true
-  - Invalid argument
+  - Input/output error
 ...
 -- wrong options for getaddrinfo
 socket.getaddrinfo('host', 'port', { type = 'WRONG' }) == nil and errno() == errno.EINVAL
@@ -2867,6 +2868,24 @@ client:read(1, 5) == ''
 - true
 ...
 server:close()
+---
+- true
+...
+-- gh-4138 Check getaddrinfo() error. Error code and error message
+-- returned by getaddrinfo() depends on system's gai_strerror()
+-- and compiler. So that there is no checking for certain error
+-- message.
+s, err = socket:connect('non_exists_hostname:3301')
+---
+...
+string.find(err, 'getaddrinfo') ~= nil
+---
+- true
+...
+s, err = socket:bind('non_exists_hostname:3301')
+---
+...
+string.find(err, 'getaddrinfo') ~= nil
 ---
 - true
 ...

@@ -982,4 +982,14 @@ fiber.cancel(echo_fiber)
 client:read(1, 5) == ''
 server:close()
 
+-- gh-4138 Check getaddrinfo() error. Error code and error message
+-- returned by getaddrinfo() depends on system's gai_strerror()
+-- and compiler. So that there is no checking for certain error
+-- message.
+
+s, err = socket:connect('non_exists_hostname:3301')
+string.find(err, 'getaddrinfo') ~= nil
+s, err = socket:bind('non_exists_hostname:3301')
+string.find(err, 'getaddrinfo') ~= nil
+
 test_run:cmd("clear filter")

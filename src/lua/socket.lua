@@ -1028,17 +1028,26 @@ local function tcp_connect(host, port, timeout)
     end
     local timeout = timeout or TIMEOUT_INFINITY
     local stop = fiber.clock() + timeout
-    local dns = getaddrinfo(host, port, timeout, { type = 'SOCK_STREAM',
+    local dns, err = getaddrinfo(host, port, timeout, { type = 'SOCK_STREAM',
         protocol = 'tcp' })
     if dns == nil or #dns == 0 then
-        boxerrno(boxerrno.EINVAL)
-        return nil
+        if not err then
+            boxerrno(boxerrno.EINVAL)
+            return nil
+        end
+        return nil, err
     end
     for i, remote in pairs(dns) do
         timeout = stop - fiber.clock()
         if timeout <= 0 then
             boxerrno(boxerrno.ETIMEDOUT)
-            return nil
+            -- Second arg added to do the behaviour of this
+            -- function symmetrical in case of timeout on both
+            -- Linux and Mac OS. On Mac OS error message 'timed
+            -- out' is thrown by getaddrinfo(). On Linux the
+            -- behaviour of getaddrinfo() in this case isn't same
+            -- and timeout is checked here.
+            return nil, 'timed out'
         end
         local s = socket_new(remote.family, remote.type, remote.protocol)
         if s then
@@ -1147,15 +1156,15 @@ end
 
 local function tcp_server_bind(host, port, prepare, timeout)
     timeout = timeout and tonumber(timeout) or TIMEOUT_INFINITY
-    local dns
+    local dns, err
     if host == 'unix/' then
         dns = {{host = host, port = port, family = 'AF_UNIX', protocol = 0,
             type = 'SOCK_STREAM' }}
     else
-        dns = getaddrinfo(host, port, timeout, { type = 'SOCK_STREAM',
+        dns, err = getaddrinfo(host, port, timeout, { type = 'SOCK_STREAM',
             flags = 'AI_PASSIVE'})
         if dns == nil then
-            return nil
+            return nil, err
         end
     end
 
@@ -1347,10 +1356,10 @@ local function lsocket_tcp_connect(self, host, port)
     -- This function is broken by design
     local ga_opts = { family = 'AF_INET', type = 'SOCK_STREAM' }
     local timeout = deadline - fiber.clock()
-    local dns = getaddrinfo(host, port, timeout, ga_opts)
+    local dns, err = getaddrinfo(host, port, timeout, ga_opts)
     if dns == nil or #dns == 0 then
         self._errno = boxerrno.EINVAL
-        return nil, socket_error(self)
+        return nil, err
     end
     for _, remote in ipairs(dns) do
         timeout = deadline - fiber.clock()
@@ -1534,9 +1543,12 @@ local function lsocket_connect(host, port)
     if host == nil or port == nil then
         error("Usage: luasocket.connect(host, port)")
     end
-    local s = tcp_connect(host, port)
+    local s, err = tcp_connect(host, port)
     if not s then
-        return nil, boxerrno.strerror()
+        if not err then
+            return nil, boxerrno.strerror()
+        end
+        return nil, err
     end
     setmetatable(s, lsocket_tcp_client_mt)
     return s
@@ -1547,9 +1559,12 @@ local function lsocket_bind(host, port, backlog)
         error("Usage: luasocket.bind(host, port [, backlog])")
     end
     local function prepare(s) return backlog end
-    local s = tcp_server_bind(host, port, prepare)
+    local s, err = tcp_server_bind(host, port, prepare)
     if not s then
-        return nil, boxerrno.strerror()
+        if not err then
+            return nil, boxerrno.strerror()
+        end
+        return nil, err
     end
     return setmetatable(s, lsocket_tcp_server_mt)
 end

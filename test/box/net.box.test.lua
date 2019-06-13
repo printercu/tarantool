@@ -1538,4 +1538,12 @@ test_run:grep_log('default', '00000020:.*')
 test_run:grep_log('default', '00000030:.*')
 test_run:grep_log('default', '00000040:.*')
 
+-- gh-4138 Check getaddrinfo() error. Error code and error message
+-- returned by getaddrinfo() depends on system's gai_strerror()
+-- and compiler. So that there is no checking for certain error
+-- message.
+
+s = remote.connect('non_exists_hostname:3301')
+string.find(s['error'], 'getaddrinfo') ~= nil
+
 box.cfg{log_level=log_level}
