@@ -38,6 +38,7 @@
 #include "vdbeInt.h"
 #include "version.h"
 #include "coll/coll.h"
+#include "box/func.h"
 #include "tarantoolInt.h"
 #include <unicode/ustring.h>
 #include <unicode/ucasemap.h>
@@ -1918,3 +1919,4 @@ sqlRegisterBuiltinFunctions(void)
 	}
 #endif
 }
+

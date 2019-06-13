@@ -70,6 +70,7 @@ struct Select;
 struct Table;
 struct sql_trigger;
 struct space_def;
+struct func_def;
 
 /**
  * Perform parsing of provided expression. This is done by
