@@ -34,7 +34,9 @@
 #include "assoc.h"
 #include "lua/utils.h"
 #include "lua/call.h"
+#include "lua/lua_sql.h"
 #include "error.h"
+#include "sql.h"
 #include "diag.h"
 #include "port.h"
 #include "schema.h"
@@ -385,11 +387,18 @@ struct func *
 func_new(struct func_def *def)
 {
 	struct func *func;
-	if (def->language == FUNC_LANGUAGE_C) {
+	switch (def->language) {
+	case FUNC_LANGUAGE_C:
 		func = func_c_new(def);
-	} else {
-		assert(def->language == FUNC_LANGUAGE_LUA);
+		break;
+	case FUNC_LANGUAGE_LUA:
 		func = func_lua_new(def);
+		break;
+	case FUNC_LANGUAGE_SQL_BUILTIN:
+		func = func_sql_builtin_new(def);
+		break;
+	default:
+		unreachable();
 	}
 	if (func == NULL)
 		return NULL;
@@ -416,8 +425,13 @@ static struct func_vtab func_c_vtab;
 static struct func *
 func_c_new(struct func_def *def)
 {
-	(void) def;
 	assert(def->language == FUNC_LANGUAGE_C);
+	if (def->body != NULL || def->is_sandboxed) {
+		diag_set(ClientError, ER_CREATE_FUNCTION, def->name,
+			 "body and is_sandboxed options are not compatible "
+			 "with C language");
+		return NULL;
+	}
 	struct func_c *func = (struct func_c *) malloc(sizeof(struct func_c));
 	if (func == NULL) {
 		diag_set(OutOfMemory, sizeof(*func), "malloc", "func");

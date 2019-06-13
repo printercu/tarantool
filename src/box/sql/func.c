@@ -38,6 +38,7 @@
 #include "vdbeInt.h"
 #include "version.h"
 #include "coll/coll.h"
+#include "box/func.h"
 #include "tarantoolInt.h"
 #include <unicode/ustring.h>
 #include <unicode/ucasemap.h>
@@ -1918,3 +1919,55 @@ sqlRegisterBuiltinFunctions(void)
 	}
 #endif
 }
+
+struct func_sql_builtin {
+	/** Function object base class. */
+	struct func base;
+};
+
+static struct func_vtab func_sql_builtin_vtab;
+
+struct func *
+func_sql_builtin_new(struct func_def *def)
+{
+	assert(def->language == FUNC_LANGUAGE_SQL_BUILTIN);
+	if (def->body != NULL || def->is_sandboxed) {
+		diag_set(ClientError, ER_CREATE_FUNCTION, def->name,
+			 "body and is_sandboxed options are not compatible "
+			 "with SQL language");
+		return NULL;
+	}
+	struct func_sql_builtin *func =
+		(struct func_sql_builtin *) malloc(sizeof(*func));
+	if (func == NULL) {
+		diag_set(OutOfMemory, sizeof(*func), "malloc", "func");
+		return NULL;
+	}
+	/** Don't export SQL builtins in Lua for now. */
+	def->exports.lua = false;
+	func->base.vtab = &func_sql_builtin_vtab;
+	return &func->base;
+}
+
+static int
+func_sql_builtin_call(struct func *base, struct port *args, struct port *ret)
+{
+	(void) args; (void) ret;
+	assert(base->vtab == &func_sql_builtin_vtab);
+	assert(base != NULL && base->def->language == FUNC_LANGUAGE_SQL_BUILTIN);
+	diag_set(ClientError, ER_UNSUPPORTED, "Tarantool", "sql builtin call");
+	return -1;
+}
+
+static void
+func_sql_builtin_destroy(struct func *base)
+{
+	assert(base->vtab == &func_sql_builtin_vtab);
+	assert(base != NULL && base->def->language == FUNC_LANGUAGE_SQL_BUILTIN);
+	free(base);
+}
+
+static struct func_vtab func_sql_builtin_vtab = {
+	.call = func_sql_builtin_call,
+	.destroy = func_sql_builtin_destroy,
+};

@@ -70,6 +70,7 @@ struct Select;
 struct Table;
 struct sql_trigger;
 struct space_def;
+struct func_def;
 
 /**
  * Perform parsing of provided expression. This is done by
@@ -403,6 +404,10 @@ vdbe_field_ref_prepare_data(struct vdbe_field_ref *field_ref, const char *data,
 void
 vdbe_field_ref_prepare_tuple(struct vdbe_field_ref *field_ref,
 			     struct tuple *tuple);
+
+/** Construct a SQL builtin function object. */
+struct func *
+func_sql_builtin_new(struct func_def *def);
 
 #if defined(__cplusplus)
 } /* extern "C" { */
