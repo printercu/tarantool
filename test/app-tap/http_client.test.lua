@@ -274,8 +274,12 @@ local function test_errors(test)
 end
 
 -- gh-3679 allow only headers can be converted to string
+-- gh-4281 allow only field 'headers' can be table and header keys
+-- are defined
 local function test_request_headers(test, url, opts)
-    local exp_err = 'headers must be string or table with "__tostring"'
+    local exp_err = 'headers should be a string or a table with a "__tostring"'
+    local exp_err_non_table = '"headers" field should be a table'
+    local exp_err_bad_key = 'header key is non-defined'
     local cases = {
         {
             'string header',
@@ -323,6 +327,26 @@ local function test_request_headers(test, url, opts)
             'table header w/o __tostring() metamethod',
             opts = {headers = {aaa = setmetatable({}, {})}},
             exp_err = exp_err,
+        },
+        {
+            'string \'headers\'',
+            opts = {headers = 'aaa'},
+            exp_err = exp_err_non_table,
+        },
+        {
+            'number \'headers\'',
+            opts = {headers = 1},
+            exp_err = exp_err_non_table,
+        },
+        {
+            'cdata (box.NULL) \'headers\'',
+            opts = {headers = box.NULL},
+            exp_err = exp_err_non_table,
+        },
+        {
+            'non-defined key',
+            opts = {headers = {'aaa'}},
+            exp_err = exp_err_bad_key,
         },
     }
     test:plan(#cases)

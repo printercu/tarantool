@@ -133,6 +133,53 @@ parse_headers(lua_State *L, char *buffer, size_t len,
 	lua_settable(L, -3);
 	return 0;
 }
+
+/**
+ * Returns codes from fill_outgoing_headers().
+ */
+enum headers_status {
+	HEADERS_SUCCESS = 0,
+	HEADERS_BAD_HEADERS = 1,
+	HEADERS_BAD_KEYS = 2,
+	HEADERS_INTERNAL_ERR = 3
+};
+
+
+/**
+ * Traverse headers in a Lua table and save them into 'struct
+ * httpc_request'.
+ *
+ * @param L Lua stack.
+ * @param req http request.
+ *
+ * @retval HEADERS_SUCCESS on success.
+ * @retval HEADERS_BAD_HEADERS on 'bad headers' error.
+ * @retval HEADERS_BAD_KEYS on 'bad keys' error.
+ * @retval HEADERS_INTERNAL_ERR on internal error.
+ */
+static enum headers_status
+fill_outgoing_headers(struct lua_State *L, int idx, struct httpc_request *req)
+{
+	lua_pushnil(L);
+	while (lua_next(L, idx - 1) != 0) {
+		int header_type = lua_type(L, -1);
+		if (header_type != LUA_TSTRING) {
+			if (header_type != LUA_TTABLE)
+				return HEADERS_BAD_HEADERS;
+			else if (!luaL_getmetafield(L, -1, "__tostring"))
+				return HEADERS_BAD_HEADERS;
+			lua_pop(L, 1);
+		}
+		if (lua_type(L, -2) != LUA_TSTRING)
+			return HEADERS_BAD_KEYS;
+		if (httpc_set_header(req, "%s: %s", lua_tostring(L, -2),
+				     lua_tostring(L, -1)) < 0)
+			return HEADERS_INTERNAL_ERR;
+		lua_pop(L, 1);
+	}
+	return HEADERS_SUCCESS;
+}
+
 /* }}}
  */
 
@@ -176,28 +223,22 @@ luaT_httpc_request(lua_State *L)
 
 	lua_getfield(L, 5, "headers");
 	if (!lua_isnil(L, -1)) {
-		lua_pushnil(L);
-		while (lua_next(L, -2) != 0) {
-			int header_type = lua_type(L, -1);
-			if (header_type != LUA_TSTRING) {
-				const char *err_msg =
-					"headers must be string or table "\
-					"with \"__tostring\"";
-				if (header_type != LUA_TTABLE) {
-					return luaL_error(L, err_msg);
-				} else if (!luaL_getmetafield(L, -1,
-							      "__tostring")) {
-					return luaL_error(L, err_msg);
-				}
-				lua_pop(L, 1);
-			}
-			if (httpc_set_header(req, "%s: %s",
-					     lua_tostring(L, -2),
-					     lua_tostring(L, -1)) < 0) {
-				httpc_request_delete(req);
-				return luaT_error(L);
-			}
-			lua_pop(L, 1);
+		if (lua_istable(L, -1) == 0) {
+			httpc_request_delete(req);
+			return luaL_error(L, "\"headers\" field should be a "
+					  "table");
+		}
+		int rc = fill_outgoing_headers(L, -1, req);
+		if (rc == HEADERS_BAD_HEADERS) {
+			httpc_request_delete(req);
+			return luaL_error(L, "headers should be a string or a "
+					  "table with a \"__tostring\"");
+		} else if (rc == HEADERS_BAD_KEYS) {
+			httpc_request_delete(req);
+			return luaL_error(L, "header key is non-defined");
+		} else if (rc == HEADERS_INTERNAL_ERR) {
+			httpc_request_delete(req);
+			return luaT_error(L);
 		}
 	}
 	lua_pop(L, 1);
