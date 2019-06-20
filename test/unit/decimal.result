@@ -256,7 +256,7 @@ ok 254 - decimal_mul(1e19, 1e19) - overflow
 ok 255 - decimal_from_string(1e19)
 ok 256 - decimal_from_string(1e-19)
 ok 257 - decimal_div(1e19, 1e-19) - overflow
-    1..146
+    1..344
     ok 1 - decimal_len(0)
     ok 2 - decimal_len(0) == len(decimal_pack(0)
     ok 3 - decimal_unpack(decimal_pack(0))
@@ -265,142 +265,340 @@ ok 257 - decimal_div(1e19, 1e-19) - overflow
     ok 6 - decimal_unpack(decimal_pack(0)) scale
     ok 7 - decimal_unpack(decimal_pack(0)) precision
     ok 8 - str(decimal_unpack(decimal_pack(0)) == 0
-    ok 9 - decimal_len(-0)
-    ok 10 - decimal_len(-0) == len(decimal_pack(-0)
-    ok 11 - decimal_unpack(decimal_pack(-0))
-    ok 12 - decimal_unpack(decimal_pack(-0)) len
-    ok 13 - decimal_unpack(decimal_pack(-0)) value
-    ok 14 - decimal_unpack(decimal_pack(-0)) scale
-    ok 15 - decimal_unpack(decimal_pack(-0)) precision
-    ok 16 - str(decimal_unpack(decimal_pack(-0)) == -0
-    ok 17 - decimal_len(1)
-    ok 18 - decimal_len(1) == len(decimal_pack(1)
-    ok 19 - decimal_unpack(decimal_pack(1))
-    ok 20 - decimal_unpack(decimal_pack(1)) len
-    ok 21 - decimal_unpack(decimal_pack(1)) value
-    ok 22 - decimal_unpack(decimal_pack(1)) scale
-    ok 23 - decimal_unpack(decimal_pack(1)) precision
-    ok 24 - str(decimal_unpack(decimal_pack(1)) == 1
-    ok 25 - decimal_len(-1)
-    ok 26 - decimal_len(-1) == len(decimal_pack(-1)
-    ok 27 - decimal_unpack(decimal_pack(-1))
-    ok 28 - decimal_unpack(decimal_pack(-1)) len
-    ok 29 - decimal_unpack(decimal_pack(-1)) value
-    ok 30 - decimal_unpack(decimal_pack(-1)) scale
-    ok 31 - decimal_unpack(decimal_pack(-1)) precision
-    ok 32 - str(decimal_unpack(decimal_pack(-1)) == -1
-    ok 33 - decimal_len(0.1)
-    ok 34 - decimal_len(0.1) == len(decimal_pack(0.1)
-    ok 35 - decimal_unpack(decimal_pack(0.1))
-    ok 36 - decimal_unpack(decimal_pack(0.1)) len
-    ok 37 - decimal_unpack(decimal_pack(0.1)) value
-    ok 38 - decimal_unpack(decimal_pack(0.1)) scale
-    ok 39 - decimal_unpack(decimal_pack(0.1)) precision
-    ok 40 - str(decimal_unpack(decimal_pack(0.1)) == 0.1
-    ok 41 - decimal_len(-0.1)
-    ok 42 - decimal_len(-0.1) == len(decimal_pack(-0.1)
-    ok 43 - decimal_unpack(decimal_pack(-0.1))
-    ok 44 - decimal_unpack(decimal_pack(-0.1)) len
-    ok 45 - decimal_unpack(decimal_pack(-0.1)) value
-    ok 46 - decimal_unpack(decimal_pack(-0.1)) scale
-    ok 47 - decimal_unpack(decimal_pack(-0.1)) precision
-    ok 48 - str(decimal_unpack(decimal_pack(-0.1)) == -0.1
-    ok 49 - decimal_len(2.718281828459045)
-    ok 50 - decimal_len(2.718281828459045) == len(decimal_pack(2.718281828459045)
-    ok 51 - decimal_unpack(decimal_pack(2.718281828459045))
-    ok 52 - decimal_unpack(decimal_pack(2.718281828459045)) len
-    ok 53 - decimal_unpack(decimal_pack(2.718281828459045)) value
-    ok 54 - decimal_unpack(decimal_pack(2.718281828459045)) scale
-    ok 55 - decimal_unpack(decimal_pack(2.718281828459045)) precision
-    ok 56 - str(decimal_unpack(decimal_pack(2.718281828459045)) == 2.718281828459045
-    ok 57 - decimal_len(-2.718281828459045)
-    ok 58 - decimal_len(-2.718281828459045) == len(decimal_pack(-2.718281828459045)
-    ok 59 - decimal_unpack(decimal_pack(-2.718281828459045))
-    ok 60 - decimal_unpack(decimal_pack(-2.718281828459045)) len
-    ok 61 - decimal_unpack(decimal_pack(-2.718281828459045)) value
-    ok 62 - decimal_unpack(decimal_pack(-2.718281828459045)) scale
-    ok 63 - decimal_unpack(decimal_pack(-2.718281828459045)) precision
-    ok 64 - str(decimal_unpack(decimal_pack(-2.718281828459045)) == -2.718281828459045
-    ok 65 - decimal_len(3.141592653589793)
-    ok 66 - decimal_len(3.141592653589793) == len(decimal_pack(3.141592653589793)
-    ok 67 - decimal_unpack(decimal_pack(3.141592653589793))
-    ok 68 - decimal_unpack(decimal_pack(3.141592653589793)) len
-    ok 69 - decimal_unpack(decimal_pack(3.141592653589793)) value
-    ok 70 - decimal_unpack(decimal_pack(3.141592653589793)) scale
-    ok 71 - decimal_unpack(decimal_pack(3.141592653589793)) precision
-    ok 72 - str(decimal_unpack(decimal_pack(3.141592653589793)) == 3.141592653589793
-    ok 73 - decimal_len(-3.141592653589793)
-    ok 74 - decimal_len(-3.141592653589793) == len(decimal_pack(-3.141592653589793)
-    ok 75 - decimal_unpack(decimal_pack(-3.141592653589793))
-    ok 76 - decimal_unpack(decimal_pack(-3.141592653589793)) len
-    ok 77 - decimal_unpack(decimal_pack(-3.141592653589793)) value
-    ok 78 - decimal_unpack(decimal_pack(-3.141592653589793)) scale
-    ok 79 - decimal_unpack(decimal_pack(-3.141592653589793)) precision
-    ok 80 - str(decimal_unpack(decimal_pack(-3.141592653589793)) == -3.141592653589793
-    ok 81 - decimal_len(1234567891234567890.0987654321987654321)
-    ok 82 - decimal_len(1234567891234567890.0987654321987654321) == len(decimal_pack(1234567891234567890.0987654321987654321)
-    ok 83 - decimal_unpack(decimal_pack(1234567891234567890.0987654321987654321))
-    ok 84 - decimal_unpack(decimal_pack(1234567891234567890.0987654321987654321)) len
-    ok 85 - decimal_unpack(decimal_pack(1234567891234567890.0987654321987654321)) value
-    ok 86 - decimal_unpack(decimal_pack(1234567891234567890.0987654321987654321)) scale
-    ok 87 - decimal_unpack(decimal_pack(1234567891234567890.0987654321987654321)) precision
-    ok 88 - str(decimal_unpack(decimal_pack(1234567891234567890.0987654321987654321)) == 1234567891234567890.0987654321987654321
-    ok 89 - decimal_len(-1234567891234567890.0987654321987654321)
-    ok 90 - decimal_len(-1234567891234567890.0987654321987654321) == len(decimal_pack(-1234567891234567890.0987654321987654321)
-    ok 91 - decimal_unpack(decimal_pack(-1234567891234567890.0987654321987654321))
-    ok 92 - decimal_unpack(decimal_pack(-1234567891234567890.0987654321987654321)) len
-    ok 93 - decimal_unpack(decimal_pack(-1234567891234567890.0987654321987654321)) value
-    ok 94 - decimal_unpack(decimal_pack(-1234567891234567890.0987654321987654321)) scale
-    ok 95 - decimal_unpack(decimal_pack(-1234567891234567890.0987654321987654321)) precision
-    ok 96 - str(decimal_unpack(decimal_pack(-1234567891234567890.0987654321987654321)) == -1234567891234567890.0987654321987654321
-    ok 97 - decimal_len(0.0000000000000000000000000000000000001)
-    ok 98 - decimal_len(0.0000000000000000000000000000000000001) == len(decimal_pack(0.0000000000000000000000000000000000001)
-    ok 99 - decimal_unpack(decimal_pack(0.0000000000000000000000000000000000001))
-    ok 100 - decimal_unpack(decimal_pack(0.0000000000000000000000000000000000001)) len
-    ok 101 - decimal_unpack(decimal_pack(0.0000000000000000000000000000000000001)) value
-    ok 102 - decimal_unpack(decimal_pack(0.0000000000000000000000000000000000001)) scale
-    ok 103 - decimal_unpack(decimal_pack(0.0000000000000000000000000000000000001)) precision
-    ok 104 - str(decimal_unpack(decimal_pack(0.0000000000000000000000000000000000001)) == 0.0000000000000000000000000000000000001
-    ok 105 - decimal_len(-0.0000000000000000000000000000000000001)
-    ok 106 - decimal_len(-0.0000000000000000000000000000000000001) == len(decimal_pack(-0.0000000000000000000000000000000000001)
-    ok 107 - decimal_unpack(decimal_pack(-0.0000000000000000000000000000000000001))
-    ok 108 - decimal_unpack(decimal_pack(-0.0000000000000000000000000000000000001)) len
-    ok 109 - decimal_unpack(decimal_pack(-0.0000000000000000000000000000000000001)) value
-    ok 110 - decimal_unpack(decimal_pack(-0.0000000000000000000000000000000000001)) scale
-    ok 111 - decimal_unpack(decimal_pack(-0.0000000000000000000000000000000000001)) precision
-    ok 112 - str(decimal_unpack(decimal_pack(-0.0000000000000000000000000000000000001)) == -0.0000000000000000000000000000000000001
-    ok 113 - decimal_len(0.00000000000000000000000000000000000001)
-    ok 114 - decimal_len(0.00000000000000000000000000000000000001) == len(decimal_pack(0.00000000000000000000000000000000000001)
-    ok 115 - decimal_unpack(decimal_pack(0.00000000000000000000000000000000000001))
-    ok 116 - decimal_unpack(decimal_pack(0.00000000000000000000000000000000000001)) len
-    ok 117 - decimal_unpack(decimal_pack(0.00000000000000000000000000000000000001)) value
-    ok 118 - decimal_unpack(decimal_pack(0.00000000000000000000000000000000000001)) scale
-    ok 119 - decimal_unpack(decimal_pack(0.00000000000000000000000000000000000001)) precision
-    ok 120 - str(decimal_unpack(decimal_pack(0.00000000000000000000000000000000000001)) == 0.00000000000000000000000000000000000001
-    ok 121 - decimal_len(-0.00000000000000000000000000000000000001)
-    ok 122 - decimal_len(-0.00000000000000000000000000000000000001) == len(decimal_pack(-0.00000000000000000000000000000000000001)
-    ok 123 - decimal_unpack(decimal_pack(-0.00000000000000000000000000000000000001))
-    ok 124 - decimal_unpack(decimal_pack(-0.00000000000000000000000000000000000001)) len
-    ok 125 - decimal_unpack(decimal_pack(-0.00000000000000000000000000000000000001)) value
-    ok 126 - decimal_unpack(decimal_pack(-0.00000000000000000000000000000000000001)) scale
-    ok 127 - decimal_unpack(decimal_pack(-0.00000000000000000000000000000000000001)) precision
-    ok 128 - str(decimal_unpack(decimal_pack(-0.00000000000000000000000000000000000001)) == -0.00000000000000000000000000000000000001
-    ok 129 - decimal_len(99999999999999999999999999999999999999)
-    ok 130 - decimal_len(99999999999999999999999999999999999999) == len(decimal_pack(99999999999999999999999999999999999999)
-    ok 131 - decimal_unpack(decimal_pack(99999999999999999999999999999999999999))
-    ok 132 - decimal_unpack(decimal_pack(99999999999999999999999999999999999999)) len
-    ok 133 - decimal_unpack(decimal_pack(99999999999999999999999999999999999999)) value
-    ok 134 - decimal_unpack(decimal_pack(99999999999999999999999999999999999999)) scale
-    ok 135 - decimal_unpack(decimal_pack(99999999999999999999999999999999999999)) precision
-    ok 136 - str(decimal_unpack(decimal_pack(99999999999999999999999999999999999999)) == 99999999999999999999999999999999999999
-    ok 137 - decimal_len(-99999999999999999999999999999999999999)
-    ok 138 - decimal_len(-99999999999999999999999999999999999999) == len(decimal_pack(-99999999999999999999999999999999999999)
-    ok 139 - decimal_unpack(decimal_pack(-99999999999999999999999999999999999999))
-    ok 140 - decimal_unpack(decimal_pack(-99999999999999999999999999999999999999)) len
-    ok 141 - decimal_unpack(decimal_pack(-99999999999999999999999999999999999999)) value
-    ok 142 - decimal_unpack(decimal_pack(-99999999999999999999999999999999999999)) scale
-    ok 143 - decimal_unpack(decimal_pack(-99999999999999999999999999999999999999)) precision
-    ok 144 - str(decimal_unpack(decimal_pack(-99999999999999999999999999999999999999)) == -99999999999999999999999999999999999999
-    ok 145 - unpack malformed decimal fails
-    ok 146 - decode malformed decimal preserves buffer position
+    ok 9 - mp_sizeof_decimal(0)
+    ok 10 - mp_sizeof_decimal(0) == len(mp_encode_decimal(0))
+    ok 11 - mp_next(mp_encode(0))
+    ok 12 - mp_decode(mp_encode(0) len
+    ok 13 - mp_decode(mp_encode(0)) value
+    ok 14 - mp_decode(mp_encode(0)) scale
+    ok 15 - str(mp_decode(mp_encode(0))) == 0
+    ok 16 - mp_ext_type is MP_DECIMAL
+    ok 17 - decimal_unpack() after mp_decode_extl()
+    ok 18 - decimal_unpack() after mp_decode_extl() value
+    ok 19 - decimal_unpack() after mp_decode_extl() len
+    ok 20 - decimal_len(-0)
+    ok 21 - decimal_len(-0) == len(decimal_pack(-0)
+    ok 22 - decimal_unpack(decimal_pack(-0))
+    ok 23 - decimal_unpack(decimal_pack(-0)) len
+    ok 24 - decimal_unpack(decimal_pack(-0)) value
+    ok 25 - decimal_unpack(decimal_pack(-0)) scale
+    ok 26 - decimal_unpack(decimal_pack(-0)) precision
+    ok 27 - str(decimal_unpack(decimal_pack(-0)) == -0
+    ok 28 - mp_sizeof_decimal(-0)
+    ok 29 - mp_sizeof_decimal(-0) == len(mp_encode_decimal(-0))
+    ok 30 - mp_next(mp_encode(-0))
+    ok 31 - mp_decode(mp_encode(-0) len
+    ok 32 - mp_decode(mp_encode(-0)) value
+    ok 33 - mp_decode(mp_encode(-0)) scale
+    ok 34 - str(mp_decode(mp_encode(-0))) == -0
+    ok 35 - mp_ext_type is MP_DECIMAL
+    ok 36 - decimal_unpack() after mp_decode_extl()
+    ok 37 - decimal_unpack() after mp_decode_extl() value
+    ok 38 - decimal_unpack() after mp_decode_extl() len
+    ok 39 - decimal_len(1)
+    ok 40 - decimal_len(1) == len(decimal_pack(1)
+    ok 41 - decimal_unpack(decimal_pack(1))
+    ok 42 - decimal_unpack(decimal_pack(1)) len
+    ok 43 - decimal_unpack(decimal_pack(1)) value
+    ok 44 - decimal_unpack(decimal_pack(1)) scale
+    ok 45 - decimal_unpack(decimal_pack(1)) precision
+    ok 46 - str(decimal_unpack(decimal_pack(1)) == 1
+    ok 47 - mp_sizeof_decimal(1)
+    ok 48 - mp_sizeof_decimal(1) == len(mp_encode_decimal(1))
+    ok 49 - mp_next(mp_encode(1))
+    ok 50 - mp_decode(mp_encode(1) len
+    ok 51 - mp_decode(mp_encode(1)) value
+    ok 52 - mp_decode(mp_encode(1)) scale
+    ok 53 - str(mp_decode(mp_encode(1))) == 1
+    ok 54 - mp_ext_type is MP_DECIMAL
+    ok 55 - decimal_unpack() after mp_decode_extl()
+    ok 56 - decimal_unpack() after mp_decode_extl() value
+    ok 57 - decimal_unpack() after mp_decode_extl() len
+    ok 58 - decimal_len(-1)
+    ok 59 - decimal_len(-1) == len(decimal_pack(-1)
+    ok 60 - decimal_unpack(decimal_pack(-1))
+    ok 61 - decimal_unpack(decimal_pack(-1)) len
+    ok 62 - decimal_unpack(decimal_pack(-1)) value
+    ok 63 - decimal_unpack(decimal_pack(-1)) scale
+    ok 64 - decimal_unpack(decimal_pack(-1)) precision
+    ok 65 - str(decimal_unpack(decimal_pack(-1)) == -1
+    ok 66 - mp_sizeof_decimal(-1)
+    ok 67 - mp_sizeof_decimal(-1) == len(mp_encode_decimal(-1))
+    ok 68 - mp_next(mp_encode(-1))
+    ok 69 - mp_decode(mp_encode(-1) len
+    ok 70 - mp_decode(mp_encode(-1)) value
+    ok 71 - mp_decode(mp_encode(-1)) scale
+    ok 72 - str(mp_decode(mp_encode(-1))) == -1
+    ok 73 - mp_ext_type is MP_DECIMAL
+    ok 74 - decimal_unpack() after mp_decode_extl()
+    ok 75 - decimal_unpack() after mp_decode_extl() value
+    ok 76 - decimal_unpack() after mp_decode_extl() len
+    ok 77 - decimal_len(0.1)
+    ok 78 - decimal_len(0.1) == len(decimal_pack(0.1)
+    ok 79 - decimal_unpack(decimal_pack(0.1))
+    ok 80 - decimal_unpack(decimal_pack(0.1)) len
+    ok 81 - decimal_unpack(decimal_pack(0.1)) value
+    ok 82 - decimal_unpack(decimal_pack(0.1)) scale
+    ok 83 - decimal_unpack(decimal_pack(0.1)) precision
+    ok 84 - str(decimal_unpack(decimal_pack(0.1)) == 0.1
+    ok 85 - mp_sizeof_decimal(0.1)
+    ok 86 - mp_sizeof_decimal(0.1) == len(mp_encode_decimal(0.1))
+    ok 87 - mp_next(mp_encode(0.1))
+    ok 88 - mp_decode(mp_encode(0.1) len
+    ok 89 - mp_decode(mp_encode(0.1)) value
+    ok 90 - mp_decode(mp_encode(0.1)) scale
+    ok 91 - str(mp_decode(mp_encode(0.1))) == 0.1
+    ok 92 - mp_ext_type is MP_DECIMAL
+    ok 93 - decimal_unpack() after mp_decode_extl()
+    ok 94 - decimal_unpack() after mp_decode_extl() value
+    ok 95 - decimal_unpack() after mp_decode_extl() len
+    ok 96 - decimal_len(-0.1)
+    ok 97 - decimal_len(-0.1) == len(decimal_pack(-0.1)
+    ok 98 - decimal_unpack(decimal_pack(-0.1))
+    ok 99 - decimal_unpack(decimal_pack(-0.1)) len
+    ok 100 - decimal_unpack(decimal_pack(-0.1)) value
+    ok 101 - decimal_unpack(decimal_pack(-0.1)) scale
+    ok 102 - decimal_unpack(decimal_pack(-0.1)) precision
+    ok 103 - str(decimal_unpack(decimal_pack(-0.1)) == -0.1
+    ok 104 - mp_sizeof_decimal(-0.1)
+    ok 105 - mp_sizeof_decimal(-0.1) == len(mp_encode_decimal(-0.1))
+    ok 106 - mp_next(mp_encode(-0.1))
+    ok 107 - mp_decode(mp_encode(-0.1) len
+    ok 108 - mp_decode(mp_encode(-0.1)) value
+    ok 109 - mp_decode(mp_encode(-0.1)) scale
+    ok 110 - str(mp_decode(mp_encode(-0.1))) == -0.1
+    ok 111 - mp_ext_type is MP_DECIMAL
+    ok 112 - decimal_unpack() after mp_decode_extl()
+    ok 113 - decimal_unpack() after mp_decode_extl() value
+    ok 114 - decimal_unpack() after mp_decode_extl() len
+    ok 115 - decimal_len(2.718281828459045)
+    ok 116 - decimal_len(2.718281828459045) == len(decimal_pack(2.718281828459045)
+    ok 117 - decimal_unpack(decimal_pack(2.718281828459045))
+    ok 118 - decimal_unpack(decimal_pack(2.718281828459045)) len
+    ok 119 - decimal_unpack(decimal_pack(2.718281828459045)) value
+    ok 120 - decimal_unpack(decimal_pack(2.718281828459045)) scale
+    ok 121 - decimal_unpack(decimal_pack(2.718281828459045)) precision
+    ok 122 - str(decimal_unpack(decimal_pack(2.718281828459045)) == 2.718281828459045
+    ok 123 - mp_sizeof_decimal(2.718281828459045)
+    ok 124 - mp_sizeof_decimal(2.718281828459045) == len(mp_encode_decimal(2.718281828459045))
+    ok 125 - mp_next(mp_encode(2.718281828459045))
+    ok 126 - mp_decode(mp_encode(2.718281828459045) len
+    ok 127 - mp_decode(mp_encode(2.718281828459045)) value
+    ok 128 - mp_decode(mp_encode(2.718281828459045)) scale
+    ok 129 - str(mp_decode(mp_encode(2.718281828459045))) == 2.718281828459045
+    ok 130 - mp_ext_type is MP_DECIMAL
+    ok 131 - decimal_unpack() after mp_decode_extl()
+    ok 132 - decimal_unpack() after mp_decode_extl() value
+    ok 133 - decimal_unpack() after mp_decode_extl() len
+    ok 134 - decimal_len(-2.718281828459045)
+    ok 135 - decimal_len(-2.718281828459045) == len(decimal_pack(-2.718281828459045)
+    ok 136 - decimal_unpack(decimal_pack(-2.718281828459045))
+    ok 137 - decimal_unpack(decimal_pack(-2.718281828459045)) len
+    ok 138 - decimal_unpack(decimal_pack(-2.718281828459045)) value
+    ok 139 - decimal_unpack(decimal_pack(-2.718281828459045)) scale
+    ok 140 - decimal_unpack(decimal_pack(-2.718281828459045)) precision
+    ok 141 - str(decimal_unpack(decimal_pack(-2.718281828459045)) == -2.718281828459045
+    ok 142 - mp_sizeof_decimal(-2.718281828459045)
+    ok 143 - mp_sizeof_decimal(-2.718281828459045) == len(mp_encode_decimal(-2.718281828459045))
+    ok 144 - mp_next(mp_encode(-2.718281828459045))
+    ok 145 - mp_decode(mp_encode(-2.718281828459045) len
+    ok 146 - mp_decode(mp_encode(-2.718281828459045)) value
+    ok 147 - mp_decode(mp_encode(-2.718281828459045)) scale
+    ok 148 - str(mp_decode(mp_encode(-2.718281828459045))) == -2.718281828459045
+    ok 149 - mp_ext_type is MP_DECIMAL
+    ok 150 - decimal_unpack() after mp_decode_extl()
+    ok 151 - decimal_unpack() after mp_decode_extl() value
+    ok 152 - decimal_unpack() after mp_decode_extl() len
+    ok 153 - decimal_len(3.141592653589793)
+    ok 154 - decimal_len(3.141592653589793) == len(decimal_pack(3.141592653589793)
+    ok 155 - decimal_unpack(decimal_pack(3.141592653589793))
+    ok 156 - decimal_unpack(decimal_pack(3.141592653589793)) len
+    ok 157 - decimal_unpack(decimal_pack(3.141592653589793)) value
+    ok 158 - decimal_unpack(decimal_pack(3.141592653589793)) scale
+    ok 159 - decimal_unpack(decimal_pack(3.141592653589793)) precision
+    ok 160 - str(decimal_unpack(decimal_pack(3.141592653589793)) == 3.141592653589793
+    ok 161 - mp_sizeof_decimal(3.141592653589793)
+    ok 162 - mp_sizeof_decimal(3.141592653589793) == len(mp_encode_decimal(3.141592653589793))
+    ok 163 - mp_next(mp_encode(3.141592653589793))
+    ok 164 - mp_decode(mp_encode(3.141592653589793) len
+    ok 165 - mp_decode(mp_encode(3.141592653589793)) value
+    ok 166 - mp_decode(mp_encode(3.141592653589793)) scale
+    ok 167 - str(mp_decode(mp_encode(3.141592653589793))) == 3.141592653589793
+    ok 168 - mp_ext_type is MP_DECIMAL
+    ok 169 - decimal_unpack() after mp_decode_extl()
+    ok 170 - decimal_unpack() after mp_decode_extl() value
+    ok 171 - decimal_unpack() after mp_decode_extl() len
+    ok 172 - decimal_len(-3.141592653589793)
+    ok 173 - decimal_len(-3.141592653589793) == len(decimal_pack(-3.141592653589793)
+    ok 174 - decimal_unpack(decimal_pack(-3.141592653589793))
+    ok 175 - decimal_unpack(decimal_pack(-3.141592653589793)) len
+    ok 176 - decimal_unpack(decimal_pack(-3.141592653589793)) value
+    ok 177 - decimal_unpack(decimal_pack(-3.141592653589793)) scale
+    ok 178 - decimal_unpack(decimal_pack(-3.141592653589793)) precision
+    ok 179 - str(decimal_unpack(decimal_pack(-3.141592653589793)) == -3.141592653589793
+    ok 180 - mp_sizeof_decimal(-3.141592653589793)
+    ok 181 - mp_sizeof_decimal(-3.141592653589793) == len(mp_encode_decimal(-3.141592653589793))
+    ok 182 - mp_next(mp_encode(-3.141592653589793))
+    ok 183 - mp_decode(mp_encode(-3.141592653589793) len
+    ok 184 - mp_decode(mp_encode(-3.141592653589793)) value
+    ok 185 - mp_decode(mp_encode(-3.141592653589793)) scale
+    ok 186 - str(mp_decode(mp_encode(-3.141592653589793))) == -3.141592653589793
+    ok 187 - mp_ext_type is MP_DECIMAL
+    ok 188 - decimal_unpack() after mp_decode_extl()
+    ok 189 - decimal_unpack() after mp_decode_extl() value
+    ok 190 - decimal_unpack() after mp_decode_extl() len
+    ok 191 - decimal_len(1234567891234567890.0987654321987654321)
+    ok 192 - decimal_len(1234567891234567890.0987654321987654321) == len(decimal_pack(1234567891234567890.0987654321987654321)
+    ok 193 - decimal_unpack(decimal_pack(1234567891234567890.0987654321987654321))
+    ok 194 - decimal_unpack(decimal_pack(1234567891234567890.0987654321987654321)) len
+    ok 195 - decimal_unpack(decimal_pack(1234567891234567890.0987654321987654321)) value
+    ok 196 - decimal_unpack(decimal_pack(1234567891234567890.0987654321987654321)) scale
+    ok 197 - decimal_unpack(decimal_pack(1234567891234567890.0987654321987654321)) precision
+    ok 198 - str(decimal_unpack(decimal_pack(1234567891234567890.0987654321987654321)) == 1234567891234567890.0987654321987654321
+    ok 199 - mp_sizeof_decimal(1234567891234567890.0987654321987654321)
+    ok 200 - mp_sizeof_decimal(1234567891234567890.0987654321987654321) == len(mp_encode_decimal(1234567891234567890.0987654321987654321))
+    ok 201 - mp_next(mp_encode(1234567891234567890.0987654321987654321))
+    ok 202 - mp_decode(mp_encode(1234567891234567890.0987654321987654321) len
+    ok 203 - mp_decode(mp_encode(1234567891234567890.0987654321987654321)) value
+    ok 204 - mp_decode(mp_encode(1234567891234567890.0987654321987654321)) scale
+    ok 205 - str(mp_decode(mp_encode(1234567891234567890.0987654321987654321))) == 1234567891234567890.0987654321987654321
+    ok 206 - mp_ext_type is MP_DECIMAL
+    ok 207 - decimal_unpack() after mp_decode_extl()
+    ok 208 - decimal_unpack() after mp_decode_extl() value
+    ok 209 - decimal_unpack() after mp_decode_extl() len
+    ok 210 - decimal_len(-1234567891234567890.0987654321987654321)
+    ok 211 - decimal_len(-1234567891234567890.0987654321987654321) == len(decimal_pack(-1234567891234567890.0987654321987654321)
+    ok 212 - decimal_unpack(decimal_pack(-1234567891234567890.0987654321987654321))
+    ok 213 - decimal_unpack(decimal_pack(-1234567891234567890.0987654321987654321)) len
+    ok 214 - decimal_unpack(decimal_pack(-1234567891234567890.0987654321987654321)) value
+    ok 215 - decimal_unpack(decimal_pack(-1234567891234567890.0987654321987654321)) scale
+    ok 216 - decimal_unpack(decimal_pack(-1234567891234567890.0987654321987654321)) precision
+    ok 217 - str(decimal_unpack(decimal_pack(-1234567891234567890.0987654321987654321)) == -1234567891234567890.0987654321987654321
+    ok 218 - mp_sizeof_decimal(-1234567891234567890.0987654321987654321)
+    ok 219 - mp_sizeof_decimal(-1234567891234567890.0987654321987654321) == len(mp_encode_decimal(-1234567891234567890.0987654321987654321))
+    ok 220 - mp_next(mp_encode(-1234567891234567890.0987654321987654321))
+    ok 221 - mp_decode(mp_encode(-1234567891234567890.0987654321987654321) len
+    ok 222 - mp_decode(mp_encode(-1234567891234567890.0987654321987654321)) value
+    ok 223 - mp_decode(mp_encode(-1234567891234567890.0987654321987654321)) scale
+    ok 224 - str(mp_decode(mp_encode(-1234567891234567890.0987654321987654321))) == -1234567891234567890.0987654321987654321
+    ok 225 - mp_ext_type is MP_DECIMAL
+    ok 226 - decimal_unpack() after mp_decode_extl()
+    ok 227 - decimal_unpack() after mp_decode_extl() value
+    ok 228 - decimal_unpack() after mp_decode_extl() len
+    ok 229 - decimal_len(0.0000000000000000000000000000000000001)
+    ok 230 - decimal_len(0.0000000000000000000000000000000000001) == len(decimal_pack(0.0000000000000000000000000000000000001)
+    ok 231 - decimal_unpack(decimal_pack(0.0000000000000000000000000000000000001))
+    ok 232 - decimal_unpack(decimal_pack(0.0000000000000000000000000000000000001)) len
+    ok 233 - decimal_unpack(decimal_pack(0.0000000000000000000000000000000000001)) value
+    ok 234 - decimal_unpack(decimal_pack(0.0000000000000000000000000000000000001)) scale
+    ok 235 - decimal_unpack(decimal_pack(0.0000000000000000000000000000000000001)) precision
+    ok 236 - str(decimal_unpack(decimal_pack(0.0000000000000000000000000000000000001)) == 0.0000000000000000000000000000000000001
+    ok 237 - mp_sizeof_decimal(0.0000000000000000000000000000000000001)
+    ok 238 - mp_sizeof_decimal(0.0000000000000000000000000000000000001) == len(mp_encode_decimal(0.0000000000000000000000000000000000001))
+    ok 239 - mp_next(mp_encode(0.0000000000000000000000000000000000001))
+    ok 240 - mp_decode(mp_encode(0.0000000000000000000000000000000000001) len
+    ok 241 - mp_decode(mp_encode(0.0000000000000000000000000000000000001)) value
+    ok 242 - mp_decode(mp_encode(0.0000000000000000000000000000000000001)) scale
+    ok 243 - str(mp_decode(mp_encode(0.0000000000000000000000000000000000001))) == 0.0000000000000000000000000000000000001
+    ok 244 - mp_ext_type is MP_DECIMAL
+    ok 245 - decimal_unpack() after mp_decode_extl()
+    ok 246 - decimal_unpack() after mp_decode_extl() value
+    ok 247 - decimal_unpack() after mp_decode_extl() len
+    ok 248 - decimal_len(-0.0000000000000000000000000000000000001)
+    ok 249 - decimal_len(-0.0000000000000000000000000000000000001) == len(decimal_pack(-0.0000000000000000000000000000000000001)
+    ok 250 - decimal_unpack(decimal_pack(-0.0000000000000000000000000000000000001))
+    ok 251 - decimal_unpack(decimal_pack(-0.0000000000000000000000000000000000001)) len
+    ok 252 - decimal_unpack(decimal_pack(-0.0000000000000000000000000000000000001)) value
+    ok 253 - decimal_unpack(decimal_pack(-0.0000000000000000000000000000000000001)) scale
+    ok 254 - decimal_unpack(decimal_pack(-0.0000000000000000000000000000000000001)) precision
+    ok 255 - str(decimal_unpack(decimal_pack(-0.0000000000000000000000000000000000001)) == -0.0000000000000000000000000000000000001
+    ok 256 - mp_sizeof_decimal(-0.0000000000000000000000000000000000001)
+    ok 257 - mp_sizeof_decimal(-0.0000000000000000000000000000000000001) == len(mp_encode_decimal(-0.0000000000000000000000000000000000001))
+    ok 258 - mp_next(mp_encode(-0.0000000000000000000000000000000000001))
+    ok 259 - mp_decode(mp_encode(-0.0000000000000000000000000000000000001) len
+    ok 260 - mp_decode(mp_encode(-0.0000000000000000000000000000000000001)) value
+    ok 261 - mp_decode(mp_encode(-0.0000000000000000000000000000000000001)) scale
+    ok 262 - str(mp_decode(mp_encode(-0.0000000000000000000000000000000000001))) == -0.0000000000000000000000000000000000001
+    ok 263 - mp_ext_type is MP_DECIMAL
+    ok 264 - decimal_unpack() after mp_decode_extl()
+    ok 265 - decimal_unpack() after mp_decode_extl() value
+    ok 266 - decimal_unpack() after mp_decode_extl() len
+    ok 267 - decimal_len(0.00000000000000000000000000000000000001)
+    ok 268 - decimal_len(0.00000000000000000000000000000000000001) == len(decimal_pack(0.00000000000000000000000000000000000001)
+    ok 269 - decimal_unpack(decimal_pack(0.00000000000000000000000000000000000001))
+    ok 270 - decimal_unpack(decimal_pack(0.00000000000000000000000000000000000001)) len
+    ok 271 - decimal_unpack(decimal_pack(0.00000000000000000000000000000000000001)) value
+    ok 272 - decimal_unpack(decimal_pack(0.00000000000000000000000000000000000001)) scale
+    ok 273 - decimal_unpack(decimal_pack(0.00000000000000000000000000000000000001)) precision
+    ok 274 - str(decimal_unpack(decimal_pack(0.00000000000000000000000000000000000001)) == 0.00000000000000000000000000000000000001
+    ok 275 - mp_sizeof_decimal(0.00000000000000000000000000000000000001)
+    ok 276 - mp_sizeof_decimal(0.00000000000000000000000000000000000001) == len(mp_encode_decimal(0.00000000000000000000000000000000000001))
+    ok 277 - mp_next(mp_encode(0.00000000000000000000000000000000000001))
+    ok 278 - mp_decode(mp_encode(0.00000000000000000000000000000000000001) len
+    ok 279 - mp_decode(mp_encode(0.00000000000000000000000000000000000001)) value
+    ok 280 - mp_decode(mp_encode(0.00000000000000000000000000000000000001)) scale
+    ok 281 - str(mp_decode(mp_encode(0.00000000000000000000000000000000000001))) == 0.00000000000000000000000000000000000001
+    ok 282 - mp_ext_type is MP_DECIMAL
+    ok 283 - decimal_unpack() after mp_decode_extl()
+    ok 284 - decimal_unpack() after mp_decode_extl() value
+    ok 285 - decimal_unpack() after mp_decode_extl() len
+    ok 286 - decimal_len(-0.00000000000000000000000000000000000001)
+    ok 287 - decimal_len(-0.00000000000000000000000000000000000001) == len(decimal_pack(-0.00000000000000000000000000000000000001)
+    ok 288 - decimal_unpack(decimal_pack(-0.00000000000000000000000000000000000001))
+    ok 289 - decimal_unpack(decimal_pack(-0.00000000000000000000000000000000000001)) len
+    ok 290 - decimal_unpack(decimal_pack(-0.00000000000000000000000000000000000001)) value
+    ok 291 - decimal_unpack(decimal_pack(-0.00000000000000000000000000000000000001)) scale
+    ok 292 - decimal_unpack(decimal_pack(-0.00000000000000000000000000000000000001)) precision
+    ok 293 - str(decimal_unpack(decimal_pack(-0.00000000000000000000000000000000000001)) == -0.00000000000000000000000000000000000001
+    ok 294 - mp_sizeof_decimal(-0.00000000000000000000000000000000000001)
+    ok 295 - mp_sizeof_decimal(-0.00000000000000000000000000000000000001) == len(mp_encode_decimal(-0.00000000000000000000000000000000000001))
+    ok 296 - mp_next(mp_encode(-0.00000000000000000000000000000000000001))
+    ok 297 - mp_decode(mp_encode(-0.00000000000000000000000000000000000001) len
+    ok 298 - mp_decode(mp_encode(-0.00000000000000000000000000000000000001)) value
+    ok 299 - mp_decode(mp_encode(-0.00000000000000000000000000000000000001)) scale
+    ok 300 - str(mp_decode(mp_encode(-0.00000000000000000000000000000000000001))) == -0.00000000000000000000000000000000000001
+    ok 301 - mp_ext_type is MP_DECIMAL
+    ok 302 - decimal_unpack() after mp_decode_extl()
+    ok 303 - decimal_unpack() after mp_decode_extl() value
+    ok 304 - decimal_unpack() after mp_decode_extl() len
+    ok 305 - decimal_len(99999999999999999999999999999999999999)
+    ok 306 - decimal_len(99999999999999999999999999999999999999) == len(decimal_pack(99999999999999999999999999999999999999)
+    ok 307 - decimal_unpack(decimal_pack(99999999999999999999999999999999999999))
+    ok 308 - decimal_unpack(decimal_pack(99999999999999999999999999999999999999)) len
+    ok 309 - decimal_unpack(decimal_pack(99999999999999999999999999999999999999)) value
+    ok 310 - decimal_unpack(decimal_pack(99999999999999999999999999999999999999)) scale
+    ok 311 - decimal_unpack(decimal_pack(99999999999999999999999999999999999999)) precision
+    ok 312 - str(decimal_unpack(decimal_pack(99999999999999999999999999999999999999)) == 99999999999999999999999999999999999999
+    ok 313 - mp_sizeof_decimal(99999999999999999999999999999999999999)
+    ok 314 - mp_sizeof_decimal(99999999999999999999999999999999999999) == len(mp_encode_decimal(99999999999999999999999999999999999999))
+    ok 315 - mp_next(mp_encode(99999999999999999999999999999999999999))
+    ok 316 - mp_decode(mp_encode(99999999999999999999999999999999999999) len
+    ok 317 - mp_decode(mp_encode(99999999999999999999999999999999999999)) value
+    ok 318 - mp_decode(mp_encode(99999999999999999999999999999999999999)) scale
+    ok 319 - str(mp_decode(mp_encode(99999999999999999999999999999999999999))) == 99999999999999999999999999999999999999
+    ok 320 - mp_ext_type is MP_DECIMAL
+    ok 321 - decimal_unpack() after mp_decode_extl()
+    ok 322 - decimal_unpack() after mp_decode_extl() value
+    ok 323 - decimal_unpack() after mp_decode_extl() len
+    ok 324 - decimal_len(-99999999999999999999999999999999999999)
+    ok 325 - decimal_len(-99999999999999999999999999999999999999) == len(decimal_pack(-99999999999999999999999999999999999999)
+    ok 326 - decimal_unpack(decimal_pack(-99999999999999999999999999999999999999))
+    ok 327 - decimal_unpack(decimal_pack(-99999999999999999999999999999999999999)) len
+    ok 328 - decimal_unpack(decimal_pack(-99999999999999999999999999999999999999)) value
+    ok 329 - decimal_unpack(decimal_pack(-99999999999999999999999999999999999999)) scale
+    ok 330 - decimal_unpack(decimal_pack(-99999999999999999999999999999999999999)) precision
+    ok 331 - str(decimal_unpack(decimal_pack(-99999999999999999999999999999999999999)) == -99999999999999999999999999999999999999
+    ok 332 - mp_sizeof_decimal(-99999999999999999999999999999999999999)
+    ok 333 - mp_sizeof_decimal(-99999999999999999999999999999999999999) == len(mp_encode_decimal(-99999999999999999999999999999999999999))
+    ok 334 - mp_next(mp_encode(-99999999999999999999999999999999999999))
+    ok 335 - mp_decode(mp_encode(-99999999999999999999999999999999999999) len
+    ok 336 - mp_decode(mp_encode(-99999999999999999999999999999999999999)) value
+    ok 337 - mp_decode(mp_encode(-99999999999999999999999999999999999999)) scale
+    ok 338 - str(mp_decode(mp_encode(-99999999999999999999999999999999999999))) == -99999999999999999999999999999999999999
+    ok 339 - mp_ext_type is MP_DECIMAL
+    ok 340 - decimal_unpack() after mp_decode_extl()
+    ok 341 - decimal_unpack() after mp_decode_extl() value
+    ok 342 - decimal_unpack() after mp_decode_extl() len
+    ok 343 - unpack malformed decimal fails
+    ok 344 - decode malformed decimal preserves buffer position
 ok 258 - subtests
