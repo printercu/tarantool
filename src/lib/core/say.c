@@ -506,7 +506,7 @@ syslog_connect_remote(const char *server_address)
 	hints.ai_protocol = IPPROTO_UDP;
 
 	ret = getaddrinfo(remote, portnum, &hints, &inf);
-	if (ret < 0) {
+	if (ret != 0) {
 		errno = EIO;
 		diag_set(SystemError, "getaddrinfo: %s",
 			 gai_strerror(ret));
@@ -594,6 +594,7 @@ log_syslog_init(struct log *log, const char *init_str)
 	log->fd = log_syslog_connect(log);
 	if (log->fd < 0) {
 		/* syslog indent is freed in atexit(). */
+		diag_log();
 		diag_set(SystemError, "syslog logger: %s", strerror(errno));
 		return -1;
 	}
