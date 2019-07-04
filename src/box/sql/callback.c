@@ -191,7 +191,6 @@ sqlFindFunction(sql * db,	/* An open database */
 	int bestScore = 0;	/* Score of best match */
 	int h;			/* Hash value */
 	int nName;		/* Length of the name */
-	struct session *user_session = current_session();
 
 	assert(nArg >= (-2));
 	assert(nArg >= (-1) || createFlag == 0);
@@ -221,9 +220,7 @@ sqlFindFunction(sql * db,	/* An open database */
 	 * new function.  But the FuncDefs for built-in functions are read-only.
 	 * So we must not search for built-ins when creating a new function.
 	 */
-	if (!createFlag &&
-	    (pBest == 0
-	     || (user_session->sql_flags & SQL_PreferBuiltin) != 0)) {
+	if (!createFlag && (pBest == NULL)) {
 		bestScore = 0;
 		h = (sqlUpperToLower[(u8) zName[0]] +
 		     nName) % SQL_FUNC_HASH_SZ;
