@@ -685,7 +685,7 @@ local function create_transport(host, port, user, password, callback,
             set_state('active')
             return console_sm(rid)
         elseif greeting.protocol == 'Binary' then
-            return iproto_auth_sm(greeting.salt)
+            return iproto_auth_sm(greeting.salt, greeting.version_id)
         else
             return error_sm(E_NO_CONNECTION,
                             'Unknown protocol: '..greeting.protocol)
@@ -710,11 +710,11 @@ local function create_transport(host, port, user, password, callback,
         end
     end
 
-    iproto_auth_sm = function(salt)
+    iproto_auth_sm = function(salt, version_id)
         set_state('auth')
         if not user or not password then
             set_state('fetch_schema')
-            return iproto_schema_sm()
+            return iproto_schema_sm(nil, version_id)
         end
         encode_auth(send_buf, new_request_id(), user, password, salt)
         local err, hdr, body_rpos, body_end = send_and_recv_iproto()
@@ -727,34 +727,52 @@ local function create_transport(host, port, user, password, callback,
             return error_sm(E_NO_CONNECTION, body[IPROTO_ERROR_KEY])
         end
         set_state('fetch_schema')
-        return iproto_schema_sm(hdr[IPROTO_SCHEMA_VERSION_KEY])
+        return iproto_schema_sm(hdr[IPROTO_SCHEMA_VERSION_KEY], version_id)
     end
 
-    iproto_schema_sm = function(schema_version)
+    iproto_schema_sm = function(schema_version, version_id)
         if not callback('will_fetch_schema') then
             set_state('active')
-            return iproto_sm(schema_version)
+            return iproto_sm(schema_version, version_id)
         end
+        local need_vcoll
+        -- 131584 is tarantool_version_id() for 2.2.0.
+        if version_id ~= nil and version_id >= 131584 then
+            need_vcoll = true
+        else
+            need_vcoll = false
+        end
+
         local select1_id = new_request_id()
         local select2_id = new_request_id()
-        local select3_id = new_request_id()
+        local select3_id = nil
         local response = {}
         -- fetch everything from space _vspace, 2 = ITER_ALL
         encode_select(send_buf, select1_id, VSPACE_ID, 0, 2, 0, 0xFFFFFFFF, nil)
         -- fetch everything from space _vindex, 2 = ITER_ALL
         encode_select(send_buf, select2_id, VINDEX_ID, 0, 2, 0, 0xFFFFFFFF, nil)
-        -- fetch everything from space _vcollation, 2 = ITER_ALL
-        encode_select(send_buf, select3_id, VCOLLATION_ID, 0, 2, 0, 0xFFFFFFFF,
-                      nil)
+        if need_vcoll == true then
+            select3_id = new_request_id()
+            -- fetch everything from space _vcollation, 2 = ITER_ALL
+            encode_select(send_buf, select3_id, VCOLLATION_ID, 0, 2, 0, 0xFFFFFFFF,
+                          nil)
+        end
 
         schema_version = nil -- any schema_version will do provided that
                              -- it is consistent across responses
+
+        local function vcoll_response(need_vcoll)
+            if need_vcoll == true then
+                return response[select3_id]
+            end
+            return true
+        end
         repeat
             local err, hdr, body_rpos, body_end = send_and_recv_iproto()
             if err then return error_sm(err, hdr) end
             dispatch_response_iproto(hdr, body_rpos, body_end)
             local id = hdr[IPROTO_SYNC_KEY]
-            if id == select1_id or id == select2_id or id == select3_id then
+            if id == select1_id or id == select2_id or id == select3_id and need_vcoll then
                 -- response to a schema query we've submitted
                 local status = hdr[IPROTO_STATUS_KEY]
                 local response_schema_version = hdr[IPROTO_SCHEMA_VERSION_KEY]
@@ -767,21 +785,21 @@ local function create_transport(host, port, user, password, callback,
                     schema_version = response_schema_version
                 elseif schema_version ~= response_schema_version then
                     -- schema changed while fetching schema; restart loader
-                    return iproto_schema_sm()
+                    return iproto_schema_sm(nil, version_id)
                 end
                 local body
                 body, body_end = decode(body_rpos)
                 response[id] = body[IPROTO_DATA_KEY]
             end
         until response[select1_id] and response[select2_id] and
-              response[select3_id]
+              vcoll_response(need_vcoll)
         callback('did_fetch_schema', schema_version, response[select1_id],
-                 response[select2_id],response[select3_id])
+                 response[select2_id], need_vcoll and response[select3_id] or nil)
         set_state('active')
-        return iproto_sm(schema_version)
+        return iproto_sm(schema_version, version_id)
     end
 
-    iproto_sm = function(schema_version)
+    iproto_sm = function(schema_version, version_id)
         local err, hdr, body_rpos, body_end = send_and_recv_iproto()
         if err then return error_sm(err, hdr) end
         dispatch_response_iproto(hdr, body_rpos, body_end)
@@ -794,9 +812,9 @@ local function create_transport(host, port, user, password, callback,
             local body
             body, body_end = decode(body_rpos)
             set_state('fetch_schema')
-            return iproto_schema_sm(schema_version)
+            return iproto_schema_sm(schema_version, version_id)
         end
-        return iproto_sm(schema_version)
+        return iproto_sm(schema_version, version_id)
     end
 
     error_sm = function(err, msg)
@@ -1270,16 +1288,21 @@ function remote_methods:_install_schema(schema_version, spaces, indices,
                 local pktype = index[PARTS][k][2] or index[PARTS][k].type
                 local pkfield = index[PARTS][k][1] or index[PARTS][k].field
                 local pkcollation = nil
-                if pkcollationid ~= nil then
+                if pkcollationid ~= nil and collations ~= nil then
                     pkcollation = collations[pkcollationid + 1][2]
                 end
 
                 local pk = {
                     type = pktype,
                     fieldno = pkfield + 1,
-                    collation = pkcollation,
                     is_nullable = pknullable
                 }
+                if collations ~= nil then
+                    pk.collation = pkcollation
+                else
+                    pk.collation_id = pkcollationid
+                end
+
                 idx.parts[k] = pk
             end
             idx.unique = not not index[OPTS].unique
