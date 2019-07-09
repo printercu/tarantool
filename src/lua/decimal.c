@@ -31,7 +31,7 @@
 
 #include "lua/decimal.h"
 #include "lib/core/decimal.h"
-#include "lua/utils.h"
+#include "lua/utils.h" /* CTID_DECIMAL, ... */
 
 #include <lua.h>
 #include <lauxlib.h>
@@ -69,16 +69,18 @@ ldecimal_##name(struct lua_State *L) {						\
 static int									\
 ldecimal_##name(struct lua_State *L) {						\
 	assert(lua_gettop(L) == 2);						\
+	if (lua_isnil(L, 1) || lua_isnil(L, 2)) {				\
+		lua_pushboolean(L, false);					\
+		return 1;							\
+	}									\
 	decimal_t *lhs = lua_todecimal(L, 1);					\
 	decimal_t *rhs = lua_todecimal(L, 2);					\
 	lua_pushboolean(L, decimal_compare(lhs, rhs) cmp 0);			\
 	return 1;								\
 }
 
-static uint32_t CTID_DECIMAL;
-
 /** Push a new decimal on the stack and return a pointer to it. */
-static decimal_t *
+decimal_t *
 lua_pushdecimal(struct lua_State *L)
 {
 	decimal_t *res = luaL_pushcdata(L, CTID_DECIMAL);

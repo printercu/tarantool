@@ -54,6 +54,8 @@ extern "C" {
 #include <lj_meta.h>
 
 #include "lua/error.h"
+#include "lib/core/mp_user_types.h"
+#include "lib/core/decimal.h" /* decimal_t */
 
 struct lua_State;
 struct ibuf;
@@ -69,6 +71,8 @@ extern struct ibuf *tarantool_lua_ibuf;
 
 extern uint32_t CTID_CONST_CHAR_PTR;
 extern uint32_t CTID_CHAR_PTR;
+extern uint32_t CTID_DECIMAL;
+
 
 /** \cond public */
 
@@ -286,8 +290,10 @@ struct luaL_field {
 		bool bval;
 		/* Array or map. */
 		uint32_t size;
+		decimal_t *decval;
 	};
 	enum mp_type type;
+	enum mp_user_type ext_type;
 	bool compact;                /* a flag used by YAML serializer */
 };
 
@@ -373,7 +379,7 @@ luaL_checkfield(struct lua_State *L, struct luaL_serializer *cfg, int idx,
 {
 	if (luaL_tofield(L, cfg, idx, field) < 0)
 		luaT_error(L);
-	if (field->type != MP_EXT)
+	if (field->type != MP_EXT || field->ext_type != MP_UNKNOWN)
 		return;
 	luaL_convertfield(L, cfg, idx, field);
 }

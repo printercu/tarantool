@@ -41,6 +41,10 @@
 #include <small/region.h>
 #include <small/ibuf.h>
 
+#include "lua/decimal.h"
+#include "lib/core/decimal.h"
+#include "lib/core/mp_user_types.h"
+
 #include <fiber.h>
 
 void
@@ -175,16 +179,23 @@ restart: /* used by MP_EXT */
 		assert(lua_gettop(L) == top);
 		return MP_ARRAY;
 	case MP_EXT:
-		/* Run trigger if type can't be encoded */
-		type = luamp_encode_extension(L, top, stream);
-		if (type != MP_EXT)
-			return type; /* Value has been packed by the trigger */
-		/* Try to convert value to serializable type */
-		luaL_convertfield(L, cfg, top, field);
-		/* handled by luaL_convertfield */
-		assert(field->type != MP_EXT);
-		assert(lua_gettop(L) == top);
-		goto restart;
+		switch (field->ext_type)
+		{
+		case MP_DECIMAL:
+			mpstream_encode_decimal(stream, field->decval);
+			return MP_EXT;
+		case MP_UNKNOWN:
+			/* Run trigger if type can't be encoded */
+			type = luamp_encode_extension(L, top, stream);
+			if (type != MP_EXT)
+				return type; /* Value has been packed by the trigger */
+			/* Try to convert value to serializable type */
+			luaL_convertfield(L, cfg, top, field);
+			/* handled by luaL_convertfield */
+			assert(field->type != MP_EXT || field->ext_type != MP_UNKNOWN);
+			assert(lua_gettop(L) == top);
+			goto restart;
+		}
 	}
 	return MP_EXT;
 }
@@ -283,8 +294,27 @@ luamp_decode(struct lua_State *L, struct luaL_serializer *cfg,
 		return;
 	}
 	case MP_EXT:
-		luamp_decode_extension(L, data);
+	{
+		uint32_t len;
+		int8_t type;
+		len = mp_decode_extl(data, &type);
+		switch (type) {
+		case MP_DECIMAL:
+		{
+			decimal_t *dec = lua_pushdecimal(L);
+			dec = decimal_unpack(data, len, dec);
+			if (dec == NULL) {
+				lua_pop(L, -1);
+				luaL_error(L, "msgpack.decode: "
+					      "invalid MsgPack.");
+			}
+			return;
+		}
+		default:
+			luamp_decode_extension(L, data);
+		}
 		break;
+	}
 	}
 }
 

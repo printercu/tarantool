@@ -32,7 +32,8 @@
  */
 
 enum mp_user_type {
-    MP_DECIMAL = 0
+    MP_UNKNOWN = 0,
+    MP_DECIMAL = 1
 };
 
 #endif

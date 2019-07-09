@@ -31,11 +31,16 @@
 #ifndef TARANTOOL_LUA_DECIMAL_H_INCLUDED
 #define TARANTOOL_LUA_DECIMAL_H_INCLUDED
 
+#include "lib/core/decimal.h"
+
 #if defined(__cplusplus)
 extern "C" {
 #endif /* defined(__cplusplus) */
 
 struct lua_State;
+
+decimal_t *
+lua_pushdecimal(struct lua_State *L);
 
 void
 tarantool_lua_decimal_init(struct lua_State *L);

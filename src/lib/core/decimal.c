@@ -33,6 +33,7 @@
 #include "third_party/decNumber/decContext.h"
 #include "third_party/decNumber/decPacked.h"
 #include "lib/core/tt_static.h"
+#include "lib/msgpuck/msgpuck.h"
 #include <stddef.h>
 #include <stdlib.h>
 #include <float.h> /* DBL_DIG */
@@ -312,12 +313,15 @@ char *
 decimal_pack(char *data, const decimal_t *dec)
 {
 	uint32_t len = decimal_len(dec);
-	*data++ = decimal_scale(dec);
+	/* reserve space for resulting scale */
+	char *svp = data++;
 	len--;
 	int32_t scale;
 	char *tmp = (char *)decPackedFromNumber((uint8_t *)data, len, &scale, dec);
 	assert(tmp == data);
-	assert(scale == (int32_t)decimal_scale(dec));
+	/* scale may be negative, when exponent is > 0 */
+	assert(scale == (int32_t)decimal_scale(dec) || scale < 0);
+	mp_store_u8(svp, (int8_t)scale);
 	(void)tmp;
 	data += len;
 	return data;
@@ -326,7 +330,7 @@ decimal_pack(char *data, const decimal_t *dec)
 decimal_t *
 decimal_unpack(const char **data, uint32_t len, decimal_t *dec)
 {
-	int32_t scale = *((*data)++);
+	int32_t scale = (int8_t)mp_load_u8(data);
 	len--;
 	decimal_t *res = decPackedToNumber((uint8_t *)*data, len, &scale, dec);
 	if (res)
