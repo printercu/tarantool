@@ -1226,6 +1226,14 @@ sql_ephemeral_space_new(Parse *parser, const char *name)
 	return space;
 }
 
+uint32_t
+vbde_field_ref_extra_sizeof(uint32_t max_field_count)
+{
+	assert(max_field_count > 0);
+	return (max_field_count) * sizeof(uint32_t) +
+	        bitmap_size(max_field_count + 1);
+}
+
 /**
  * Initialize a new vdbe_field_ref instance with given tuple
  * data.
@@ -1244,8 +1252,14 @@ vdbe_field_ref_create(struct vdbe_field_ref *field_ref, struct tuple *tuple,
 
 	const char *field0 = data;
 	field_ref->field_count = mp_decode_array((const char **) &field0);
+
+	uint32_t slots_size = sizeof(uint32_t) * (field_ref->field_count + 1);
+	field_ref->slot_bitmap = (char *)field_ref->slots + slots_size;
+	memset(field_ref->slot_bitmap, 0,
+	       bitmap_size(field_ref->field_count + 1));
+
 	field_ref->slots[0] = (uint32_t)(field0 - data);
-	field_ref->rightmost_slot = 0;
+	bit_set(field_ref->slot_bitmap, 0);
 }
 
 void

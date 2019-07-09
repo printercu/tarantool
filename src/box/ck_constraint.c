@@ -188,8 +188,10 @@ ck_constraint_on_replace_trigger(struct trigger *trigger, void *event)
 
 	struct space *space = stmt->space;
 	assert(space != NULL);
-	uint32_t field_ref_sz = sizeof(struct vdbe_field_ref) +
-				sizeof(uint32_t) * space->def->field_count;
+	uint32_t field_ref_extra_sz =
+		vbde_field_ref_extra_sizeof(space->def->field_count);
+	uint32_t field_ref_sz =
+		sizeof(struct vdbe_field_ref) + field_ref_extra_sz;
 	struct vdbe_field_ref *field_ref =
 		region_alloc(&fiber()->gc, field_ref_sz);
 	if (field_ref == NULL) {

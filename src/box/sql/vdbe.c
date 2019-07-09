@@ -234,8 +234,9 @@ allocateCursor(
 
 	int nByte;
 	VdbeCursor *pCx = 0;
-	nByte =
-		ROUND8(sizeof(VdbeCursor)) + sizeof(u32)*nField +
+	uint32_t field_ref_extra_sz =
+		ROUND8(vbde_field_ref_extra_sizeof(nField));
+	nByte = ROUND8(sizeof(VdbeCursor)) + field_ref_extra_sz +
 		(eCurType==CURTYPE_TARANTOOL ? ROUND8(sizeof(BtCursor)) : 0);
 
 	assert(iCur>=0 && iCur<p->nCursor);
@@ -250,7 +251,8 @@ allocateCursor(
 		pCx->nField = nField;
 		if (eCurType==CURTYPE_TARANTOOL) {
 			pCx->uc.pCursor = (BtCursor*)
-				&pMem->z[ROUND8(sizeof(VdbeCursor))+sizeof(u32)*nField];
+				&pMem->z[ROUND8(sizeof(VdbeCursor))+
+					 field_ref_extra_sz];
 			sqlCursorZero(pCx->uc.pCursor);
 		}
 	}
@@ -597,6 +599,23 @@ mem_type_to_str(const struct Mem *p)
 	}
 }
 
+static uint32_t
+vdbe_field_ref_closest_slotno(struct vdbe_field_ref *field_ref,
+			      uint32_t fieldno)
+{
+	uint32_t sz = bitmap_size(field_ref->field_count);
+	struct bit_iterator it;
+	bit_iterator_init(&it, field_ref->slot_bitmap, sz, true);
+	size_t prev, curr;
+	for (prev = curr = bit_iterator_next(&it);
+		curr < fieldno && curr < SIZE_MAX;
+		curr = bit_iterator_next(&it)) {
+		prev = curr;
+	}
+	assert(prev < SIZE_MAX);
+	return prev;
+}
+
 /**
  * Try to get a current tuple field using its field map.
  * @param field_ref The vdbe_field_ref instance to use.
@@ -610,18 +629,67 @@ static const void *
 vdbe_field_ref_fast_fetch(struct vdbe_field_ref *field_ref, uint32_t fieldno,
 			  uint32_t *field_size)
 {
-	if (field_ref->tuple == NULL)
-		return NULL;
-	struct tuple_format *format = tuple_format(field_ref->tuple);
-	if (fieldno >= tuple_format_field_count(format) ||
-	    tuple_format_field(format, fieldno)->offset_slot ==
-	    TUPLE_OFFSET_SLOT_NIL)
-		return NULL;
-	const char *field = tuple_field(field_ref->tuple, fieldno);
-	const char *end = field;
-	mp_next(&end);
-	*field_size = end - field;
-	return field;
+	struct tuple_format *format = field_ref->tuple != NULL ?
+				      tuple_format(field_ref->tuple) : NULL;
+	uint32_t format_field_count =
+		 format != NULL ? tuple_format_field_count(format) : 0;
+
+	const char *field_begin = NULL, *field_end = NULL;
+	if (bit_test(field_ref->slot_bitmap, fieldno)) {
+		/*
+		 * Current field has been already
+		 * touched before.
+		 */
+		field_begin = field_ref->data + field_ref->slots[fieldno];
+	} else {
+		struct tuple_field *field =
+			fieldno < format_field_count ?
+			tuple_format_field(format, fieldno) : NULL;
+		if (field != NULL &&
+		    field->offset_slot != TUPLE_OFFSET_SLOT_NIL) {
+			field_begin = tuple_field(field_ref->tuple, fieldno);
+		} else {
+			/*
+			 * Lookup for the closest previously
+			 * touched field.
+			 */
+			uint32_t prev =
+				vdbe_field_ref_closest_slotno(field_ref,
+							      fieldno);
+			field_begin = field_ref->data + field_ref->slots[prev];
+			for (; prev < fieldno; prev++) {
+				field_ref->slots[prev] =
+					(uint32_t)(field_begin - field_ref->data);
+				bit_set(field_ref->slot_bitmap, prev);
+				mp_next(&field_begin);
+			}
+		}
+		field_ref->slots[fieldno] =
+			(uint32_t)(field_begin - field_ref->data);
+		bit_set(field_ref->slot_bitmap, fieldno);
+	}
+
+	if (bit_test(field_ref->slot_bitmap, fieldno + 1)) {
+		/* Next field has been already touched before. */
+		field_end = field_ref->data + field_ref->slots[fieldno + 1];
+	} else {
+		struct tuple_field *field =
+			fieldno + 1 < format_field_count ?
+			tuple_format_field(format, fieldno + 1) : NULL;
+		if (field != NULL &&
+		    field->offset_slot != TUPLE_OFFSET_SLOT_NIL) {
+			field_end = tuple_field(field_ref->tuple, fieldno + 1);
+		} else {
+			field_end = field_begin;
+			mp_next(&field_end);
+		}
+		field_ref->slots[fieldno + 1] =
+			(uint32_t)(field_end - field_ref->data);
+		bit_set(field_ref->slot_bitmap, fieldno + 1);
+	}
+
+	*field_size = field_end - field_begin;
+	return field_begin;
 }
 
 /**
@@ -643,37 +711,9 @@ vdbe_field_ref_fetch(struct vdbe_field_ref *field_ref, uint32_t fieldno,
 		UPDATE_MAX_BLOBSIZE(dest_mem);
 		return 0;
 	}
-
-	const char *data;
-	if (field_ref->rightmost_slot <= fieldno) {
-		uint32_t field_sz;
-		data = vdbe_field_ref_fast_fetch(field_ref, fieldno,
-						 &field_sz);
-		if (data != NULL) {
-			/*
-			 * Special case for tarantool spaces: for
-			 * indexed fields a tuple field map can be
-			 * used. Else there is no sense in
-			 * tuple_field usage, because it makes
-			 * foreach field { mp_next(); } to find
-			 * a field. In such a case sql is
-			 * better - it saves offsets to all fields
-			 * visited in mp_next() cycle.
-			 */
-			uint32_t offset = (uint32_t)(data - field_ref->data);
-			slots[fieldno] = offset;
-			slots[fieldno + 1] = offset + field_sz;
-		} else {
-			uint32_t i = field_ref->rightmost_slot;
-			data = field_ref->data + slots[i];
-			do {
-				mp_next(&data);
-				slots[++i] = (uint32_t)(data - field_ref->data);
-			} while (i <= fieldno);
-			field_ref->rightmost_slot = i;
-		}
-	}
-
+	uint32_t field_sz;
+	const char *data = vdbe_field_ref_fast_fetch(field_ref, fieldno,
+						     &field_sz);
 	assert(sqlVdbeCheckMemInvariants(dest_mem) != 0);
 	uint32_t dummy;
 	data = field_ref->data + slots[fieldno];

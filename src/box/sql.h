@@ -360,6 +360,8 @@ sqlSrcListDelete(struct sql *db, struct SrcList *list);
  * |  struct vdbe_field_ref  |
  * +-------------------------+
  * |      RESERVED MEMORY    |
+ * |         (slots)         |
+ * |      (slot_bitmap)      |
  * +-------------------------+
  */
 struct vdbe_field_ref {
@@ -371,17 +373,21 @@ struct vdbe_field_ref {
 	uint32_t data_sz;
 	/** Count of fields in tuple. */
 	uint32_t field_count;
-	/**
-	 * Index of the rightmost initialized slot in slots
-	 * array.
-	 */
-	uint32_t rightmost_slot;
+	/** Bitmap of initialized slots. */
+	void *slot_bitmap;
 	/**
 	 * Array of offsets of tuple fields.
 	 * Only values <= rightmost_slot are valid.
 	 */
 	uint32_t slots[1];
 };
+
+/**
+ * Calculate the size of vdbe_field_ref structure
+ * that manages up to max_field_count fields.
+ */
+uint32_t
+vbde_field_ref_extra_sizeof(uint32_t max_field_count);
 
 /**
  * Initialize a new vdbe_field_ref instance with given tuple
