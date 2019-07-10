@@ -37,6 +37,10 @@
 #include "third_party/decNumber/decNumber.h"
 #include <stdint.h>
 
+#if defined(__cplusplus)
+extern "C" {
+#endif /* defined(__cplusplus) */
+
 typedef decNumber decimal_t;
 
 /**
@@ -206,5 +210,9 @@ decimal_pack(char *data, const decimal_t *dec);
  */
 decimal_t *
 decimal_unpack(const char **data, uint32_t len, decimal_t *dec);
+
+#if defined(__cplusplus)
+} /* extern "C" */
+#endif /* defined(__cplusplus) */
 
 #endif /* TARANTOOL_LIB_CORE_DECIMAL_H_INCLUDED */

@@ -33,6 +33,9 @@
 #include "coll/coll.h"
 #include "trivia/util.h" /* NOINLINE */
 #include <math.h>
+#include "lib/core/decimal.h"
+#include "lib/core/mp_decimal.h"
+#include "lib/core/mp_user_types.h"
 
 /* {{{ tuple_compare */
 
@@ -87,7 +90,7 @@ static enum mp_class mp_classes[] = {
 	/* .MP_BOOL    = */ MP_CLASS_BOOL,
 	/* .MP_FLOAT   = */ MP_CLASS_NUMBER,
 	/* .MP_DOUBLE  = */ MP_CLASS_NUMBER,
-	/* .MP_BIN     = */ MP_CLASS_BIN
+	/* .MP_EXT     = */ MP_CLASS_NUMBER /* requires additional parsing */
 };
 
 #define COMPARE_RESULT(a, b) (a < b ? -1 : a > b)
@@ -265,12 +268,71 @@ mp_compare_double_any_number(double lhs, const char *rhs,
 }
 
 static int
+mp_compare_decimal_any_number(decimal_t *lhs, const char *rhs,
+			      enum mp_type rhs_type, int k)
+{
+	decimal_t rhs_dec;
+	switch (rhs_type) {
+	case MP_FLOAT:
+	{
+		double d = mp_decode_float(&rhs);
+		decimal_from_double(&rhs_dec, d);
+		break;
+	}
+	case MP_DOUBLE:
+	{
+		double d = mp_decode_double(&rhs);
+		decimal_from_double(&rhs_dec, d);
+		break;
+	}
+	case MP_INT:
+	{
+		int64_t num = mp_decode_int(&rhs);
+		decimal_from_int64(&rhs_dec, num);
+		break;
+	}
+	case MP_UINT:
+	{
+		uint64_t num = mp_decode_uint(&rhs);
+		decimal_from_uint64(&rhs_dec, num);
+		break;
+	}
+	case MP_EXT:
+	{
+		int8_t ext_type;
+		uint32_t len = mp_decode_extl(&rhs, &ext_type);
+		assert(ext_type == MP_DECIMAL);
+		decimal_unpack(&rhs, len, &rhs_dec);
+		break;
+	}
+	default:
+		unreachable();
+	}
+	return k * decimal_compare(lhs, &rhs_dec);
+}
+
+static int
 mp_compare_number_with_type(const char *lhs, enum mp_type lhs_type,
 			    const char *rhs, enum mp_type rhs_type)
 {
 	assert(mp_classof(lhs_type) == MP_CLASS_NUMBER);
 	assert(mp_classof(rhs_type) == MP_CLASS_NUMBER);
 
+	/*
+	 * test decimals first, so that we don't have to
+	 * account for them in other comarators.
+	 */
+	decimal_t dec;
+	if (rhs_type == MP_EXT) {
+		return mp_compare_decimal_any_number(
+			mp_decode_decimal(&rhs, &dec), lhs, lhs_type, -1
+		);
+	}
+	if (lhs_type == MP_EXT) {
+		return mp_compare_decimal_any_number(
+			mp_decode_decimal(&lhs, &dec), rhs, rhs_type, 1
+		);
+	}
 	if (rhs_type == MP_FLOAT) {
 		return mp_compare_double_any_number(
 			mp_decode_float(&rhs), lhs, lhs_type, -1
@@ -410,6 +472,8 @@ tuple_compare_field(const char *field_a, const char *field_b,
 		return coll != NULL ?
 		       mp_compare_scalar_coll(field_a, field_b, coll) :
 		       mp_compare_scalar(field_a, field_b);
+	case FIELD_TYPE_DECIMAL:
+		return mp_compare_number(field_a, field_b);
 	default:
 		unreachable();
 		return 0;
@@ -443,6 +507,8 @@ tuple_compare_field_with_type(const char *field_a, enum mp_type a_type,
 		       mp_compare_scalar_coll(field_a, field_b, coll) :
 		       mp_compare_scalar_with_type(field_a, a_type,
 						   field_b, b_type);
+	case FIELD_TYPE_DECIMAL:
+		return mp_compare_number(field_a, field_b);
 	default:
 		unreachable();
 		return 0;
@@ -1356,6 +1422,25 @@ static const comparator_with_key_signature cmp_wk_arr[] = {
 #define HINT_VALUE_DOUBLE_MAX	(exp2(HINT_VALUE_BITS - 1) - 1)
 #define HINT_VALUE_DOUBLE_MIN	(-exp2(HINT_VALUE_BITS - 1))
 
+/**
+ * Max and min decimal numbers whose integral parts fit
+ * in a hint value.
+ */
+static const decimal_t HINT_VALUE_DECIMAL_MAX = {
+	18,				/* decimal digits */
+	0,				/* exponent */
+	0,				/* no special bits. */
+	{487, 423, 303, 752, 460, 576}	/* 576,460,752,303,423,488 = 2^59 - 1 */
+					/* 59 == HINT_VALUE_BITS - 1 */
+};
+
+static const decimal_t HINT_VALUE_DECIMAL_MIN = {
+	18,				/* decimal digits */
+	0,				/* exponent */
+	0x80,				/* negative bit */
+	{488, 423, 303, 752, 460, 576}	/* 576,460,752,303,423,488 = 2^59 */
+};
+
 /*
  * HINT_CLASS_BITS should be big enough to store any mp_class value.
  * Note, ((1 << HINT_CLASS_BITS) - 1) is reserved for HINT_NONE.
@@ -1411,6 +1496,25 @@ hint_double(double d)
 		val = 0;
 	else
 		val = (int64_t)d - HINT_VALUE_INT_MIN;
+
+	return hint_create(MP_CLASS_NUMBER, val);
+}
+
+static inline hint_t
+hint_decimal(decimal_t *dec)
+{
+	uint64_t val = 0;
+	int64_t num;
+	if (decimal_compare(dec, &HINT_VALUE_DECIMAL_MAX) >= 0)
+		val = HINT_VALUE_MAX;
+	else if (decimal_compare(dec, &HINT_VALUE_DECIMAL_MIN) <= 0)
+		val = 0;
+	else {
+		dec = decimal_to_int64(dec, &num);
+		/* We've checked boundaries above. */
+		assert(dec != NULL);
+		val = num - HINT_VALUE_INT_MIN;
+	}
 
 	return hint_create(MP_CLASS_NUMBER, val);
 }
@@ -1491,10 +1595,40 @@ field_hint_number(const char *field)
 		return hint_double(mp_decode_float(&field));
 	case MP_DOUBLE:
 		return hint_double(mp_decode_double(&field));
+	case MP_EXT:
+	{
+		int8_t ext_type;
+		uint32_t len = mp_decode_extl(&field, &ext_type);
+		switch(ext_type) {
+		case MP_DECIMAL:
+		{
+			decimal_t dec;
+			decimal_t *res;
+			/*
+			 * The effect of mp_decode_extl() +
+			 * decimal_unpack() is the same that
+			 * the one of mp_decode_decimal().
+			 */
+			res = decimal_unpack(&field, len, &dec);
+			assert(res != NULL);
+			return hint_decimal(res);
+		}
+		default:
+			unreachable();
+		}
+	}
 	default:
 		unreachable();
 	}
 	return HINT_NONE;
+}
+
+static inline hint_t
+field_hint_decimal(const char *field)
+{
+	assert(mp_typeof(*field) == MP_EXT);
+	decimal_t dec;
+	return hint_decimal(mp_decode_decimal(&field, &dec));
 }
 
 static inline hint_t
@@ -1536,6 +1670,25 @@ field_hint_scalar(const char *field, struct coll *coll)
 	case MP_BIN:
 		len = mp_decode_binl(&field);
 		return hint_bin(field, len);
+	case MP_EXT:
+	{
+		int8_t ext_type;
+		uint32_t len = mp_decode_extl(&field, &ext_type);
+		switch(ext_type) {
+		case MP_DECIMAL:
+		{
+			decimal_t dec;
+			/*
+			 * The effect of mp_decode_extl() +
+			 * decimal_unpack() is the same that
+			 * the one of mp_decode_decimal().
+			 */
+			return hint_decimal(decimal_unpack(&field, len, &dec));
+		}
+		default:
+			unreachable();
+		}
+	}
 	default:
 		unreachable();
 	}
@@ -1563,6 +1716,8 @@ field_hint(const char *field, struct coll *coll)
 		return field_hint_varbinary(field);
 	case FIELD_TYPE_SCALAR:
 		return field_hint_scalar(field, coll);
+	case FIELD_TYPE_DECIMAL:
+		return field_hint_decimal(field);
 	default:
 		unreachable();
 	}
@@ -1667,6 +1822,9 @@ key_def_set_hint_func(struct key_def *def)
 		break;
 	case FIELD_TYPE_SCALAR:
 		key_def_set_hint_func<FIELD_TYPE_SCALAR>(def);
+		break;
+	case FIELD_TYPE_DECIMAL:
+		key_def_set_hint_func<FIELD_TYPE_DECIMAL>(def);
 		break;
 	default:
 		/* Invalid key definition. */
