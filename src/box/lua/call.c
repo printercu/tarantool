@@ -300,6 +300,12 @@ struct execute_lua_ctx {
 	struct port *args;
 };
 
+/**
+ * Find a lua function by name and execute it. Used for body-less
+ * UDFs, which may not yet be defined when a function definition
+ * is loaded from _func table, or dynamically re-defined at any
+ * time. We don't cache references to such functions.
+ */
 static int
 execute_lua_call(lua_State *L)
 {
@@ -324,6 +330,10 @@ execute_lua_call(lua_State *L)
 	return lua_gettop(L);
 }
 
+/**
+ * Dereference a sandboxed function and execute it. Used for
+ * persistent UDFs.
+ */
 static int
 execute_lua_call_by_ref(lua_State *L)
 {
