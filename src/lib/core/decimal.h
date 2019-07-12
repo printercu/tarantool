@@ -102,6 +102,18 @@ const char *
 decimal_to_string(const decimal_t *dec);
 
 /**
+ * Convert a given decimal to int64_t
+ * \param[out] num - the result
+ * @return NULL if \a dec doesn't fit into int64_t
+ */
+decimal_t *
+decimal_to_int64(decimal_t *dec, int64_t *num);
+
+/** \sa decimal_to_int64 */
+decimal_t *
+decimal_to_uint64(decimal_t *dec, uint64_t *num);
+
+/**
  * Compare 2 decimal values.
  * @return -1, lhs < rhs,
  *	    0, lhs = rhs,
