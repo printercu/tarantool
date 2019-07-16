@@ -292,3 +292,24 @@ box.space.test:drop()
 test_run:cmd("switch default")
 test_run:cmd("stop server test")
 test_run:cmd("cleanup server test")
+
+--
+-- gh-4350: Vinyl should use LSNs of individual rows from a DDL
+-- multi-statement transaction. Not only a single txn signature
+-- for all rows.
+--
+-- Before fix of #4350, below both primary and secondary indexes
+-- were committed to vylog with the latest LSN of the whole
+-- transaction. Lets assume that pk creation is stored in WAL as
+-- lsn1, and sk creation as lsn2. Then latest here is lsn2.
+--
+box.begin() s = box.schema.create_space('test', {engine = 'vinyl'}) pk = s:create_index('pk') sk = s:create_index('sk', {parts = {2}}) box.commit()
+box.space.test ~= nil
+test_run:cmd("restart server default")
+--
+-- On recovery of lsn1 record (pk creation) Vinyl sees, that in
+-- vylog the same record is stored with lsn2 > lsn1, and thinks,
+-- that this index is dropped already. It led to an assertion on a
+-- 'second' drop.
+--
+box.space.test:drop()

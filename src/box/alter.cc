@@ -626,6 +626,14 @@ public:
 	/** Link in alter_space::ops. */
 	struct rlist link;
 	/**
+	 * A WAL log record filled once this operation is
+	 * committed. It is used to commit each operation in a
+	 * multi-statement DDL transaction with its own LSN. This
+	 * record is utilized by Vinyl to write correct LSNs to
+	 * vylog when it creates indexes.
+	 */
+	struct xrow_header *committed_row;
+	/**
 	 * Called before creating the new space. Used to update
 	 * the space definition and/or key list that will be used
 	 * for creating the new space. Must not yield or fail.
@@ -743,6 +751,7 @@ AlterSpaceOp::AlterSpaceOp(struct alter_space *alter)
 {
 	/* Add to the tail: operations must be processed in order. */
 	rlist_add_tail_entry(&alter->ops, this, link);
+	committed_row = txn_current_stmt(in_txn())->row;
 }
 
 /**
@@ -820,7 +829,7 @@ struct mh_i32_t *AlterSpaceLock::registry;
 static void
 alter_space_commit(struct trigger *trigger, void *event)
 {
-	struct txn *txn = (struct txn *) event;
+	(void) event;
 	struct alter_space *alter = (struct alter_space *) trigger->data;
 	/*
 	 * Commit alter ops, this will move the changed
@@ -828,7 +837,9 @@ alter_space_commit(struct trigger *trigger, void *event)
 	 */
 	class AlterSpaceOp *op;
 	rlist_foreach_entry(op, &alter->ops, link) {
-		op->commit(alter, txn->signature);
+		struct xrow_header *row = op->committed_row;
+		assert(row != NULL);
+		op->commit(alter, row->lsn);
 	}
 
 	alter->new_space = NULL; /* for alter_space_delete(). */
