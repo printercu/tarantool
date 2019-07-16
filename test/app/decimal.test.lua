@@ -128,3 +128,9 @@ a = decimal.new('-13')
 a ^ 2
 -- fractional powers are allowed only for positive numbers
 a ^ 2.5
+
+-- check correct rounding when scale = 0
+decimal.round(decimal.new(0.9), 0)
+decimal.round(decimal.new(9.9), 0)
+decimal.round(decimal.new(99.9), 0)
+decimal.round(decimal.new(99.4), 0)
