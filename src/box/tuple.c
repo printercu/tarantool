@@ -490,7 +490,8 @@ tuple_go_to_path(const char **data, const char *path, uint32_t path_len,
 			return 0;
 		}
 	}
-	return rc != 0 ? -1 : 0;
+	assert(rc > 0);
+	return rc;
 }
 
 const char *
