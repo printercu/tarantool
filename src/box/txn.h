@@ -89,6 +89,8 @@ struct txn_savepoint {
 	 * creation.
 	 */
 	int in_sub_stmt;
+	/** True if commit/rollback triggers are set. */
+	bool has_triggers;
 	/**
 	 * Statement, on which a savepoint is created. On rollback
 	 * to this savepoint all newer statements are rolled back.
@@ -106,6 +108,15 @@ struct txn_savepoint {
 	 * state violating any number of deferred FK constraints.
 	 */
 	uint32_t fk_deferred_count;
+	/**
+	 * Dummy commit and rollback triggers installed when this
+	 * savepoint was created. They are used on rollback to this
+	 * savepoint in order to remove triggers set after this
+	 * savepoint was created. We don't set the fake triggers
+	 * if the transaction doesn't have any triggers, because
+	 * in that case we have to remove all triggers on rollback.
+	 */
+	struct trigger on_commit, on_rollback;
 };
 
 extern double too_long_threshold;
