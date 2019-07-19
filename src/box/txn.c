@@ -381,8 +381,16 @@ txn_complete(struct txn *txn)
 		/* Commit the transaction. */
 		if (txn->engine != NULL)
 			engine_commit(txn->engine, txn);
-		if (txn->has_triggers)
+		if (txn->has_triggers) {
+			/*
+			 * Commit triggers must be run in the same
+			 * order they were added. Since triggers
+			 * are always added to the list head, we
+			 * need to reverse the list.
+			 */
+			rlist_reverse(&txn->on_commit);
 			txn_run_triggers(txn, &txn->on_commit);
+		}
 
 		double stop_tm = ev_monotonic_now(loop());
 		if (stop_tm - txn->start_tm > too_long_threshold) {
