@@ -277,6 +277,7 @@ box.execute("SELECT a FROM t1 WHERE a IN (1.1, 2.1);")
 
 s:drop()
 
+<<<<<<< HEAD
 -- gh-3810: range of integer is extended up to 2^64 - 1.
 --
 box.execute("SELECT 18446744073709551615 > 18446744073709551614;")
@@ -399,3 +400,11 @@ box.execute("SELECT CAST('123' AS UNSIGNED);")
 box.execute("SELECT CAST('-123' AS UNSIGNED);")
 
 box.space.T1:drop()
+
+-- Make sure that CASE-THEN statement return type is SCALAR in
+-- case two THEN clauses feature different types.
+--
+box.execute("SELECT CASE 1 WHEN 1 THEN x'0000000000' WHEN 2 THEN 'str' END")
+box.execute("SELECT CASE 1 WHEN 1 THEN 666 WHEN 2 THEN 123 END")
+box.execute("SELECT CASE 1 WHEN 1 THEN 666 WHEN 2 THEN 123 ELSE 321 END")
+box.execute("SELECT CASE 1 WHEN 1 THEN 666 WHEN 2 THEN 123 ELSE 'asd' END")
