@@ -691,6 +691,11 @@ sqlVdbeMemCast(Mem * pMem, enum field_type type)
 		return sqlVdbeMemIntegerify(pMem, true);
 	case FIELD_TYPE_NUMBER:
 		return sqlVdbeMemRealify(pMem);
+	case FIELD_TYPE_VARBINARY:
+		/* VARIBNARY can't be converted to any other type. */
+		if ((pMem->flags & MEM_Blob) != 0)
+			return 0;
+		return -1;
 	default:
 		assert(type == FIELD_TYPE_STRING);
 		assert(MEM_Str == (MEM_Blob >> 3));
