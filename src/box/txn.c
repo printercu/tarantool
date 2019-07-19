@@ -52,6 +52,29 @@ fiber_set_txn(struct fiber *fiber, struct txn *txn)
 	fiber->storage.txn = txn;
 }
 
+/**
+ * A savepoint that points to the beginning of a transaction.
+ * Use it to rollback all statements of any transaction.
+ */
+static struct txn_savepoint zero_svp = {
+	/* .in_sub_stmt = */ 0,
+	/* .stmt = */ NULL,
+	/* .fk_deferred_count = */ 0,
+};
+
+/**
+ * Create a savepoint that can be used to rollback to
+ * the current transaction state.
+ */
+static void
+txn_create_svp(struct txn *txn, struct txn_savepoint *svp)
+{
+	svp->in_sub_stmt = txn->in_sub_stmt;
+	svp->stmt = stailq_last(&txn->stmts);
+	if (txn->psql_txn != NULL)
+		svp->fk_deferred_count = txn->psql_txn->fk_deferred_count;
+}
+
 static int
 txn_add_redo(struct txn *txn, struct txn_stmt *stmt, struct request *request)
 {
@@ -102,7 +125,7 @@ txn_stmt_new(struct txn *txn)
 	stmt->row = NULL;
 
 	/* Set the savepoint for statement rollback. */
-	txn->sub_stmt_begin[txn->in_sub_stmt] = stailq_last(&txn->stmts);
+	txn_create_svp(txn, &txn->sub_stmt_begin[txn->in_sub_stmt]);
 	txn->in_sub_stmt++;
 
 	stailq_add_tail_entry(&txn->stmts, stmt, next);
@@ -119,11 +142,11 @@ txn_stmt_unref_tuples(struct txn_stmt *stmt)
 }
 
 static void
-txn_rollback_to_svp(struct txn *txn, struct stailq_entry *svp)
+txn_rollback_to_svp(struct txn *txn, struct txn_savepoint *svp)
 {
 	struct txn_stmt *stmt;
 	struct stailq rollback;
-	stailq_cut_tail(&txn->stmts, svp, &rollback);
+	stailq_cut_tail(&txn->stmts, svp->stmt, &rollback);
 	stailq_reverse(&rollback);
 	stailq_foreach_entry(stmt, &rollback, next) {
 		if (txn->engine != NULL && stmt->space != NULL)
@@ -142,6 +165,8 @@ txn_rollback_to_svp(struct txn *txn, struct stailq_entry *svp)
 		stmt->space = NULL;
 		stmt->row = NULL;
 	}
+	if (txn->psql_txn != NULL)
+		txn->psql_txn->fk_deferred_count = svp->fk_deferred_count;
 }
 
 /*
@@ -565,7 +590,7 @@ txn_rollback_stmt(struct txn *txn)
 	if (txn == NULL || txn->in_sub_stmt == 0)
 		return;
 	txn->in_sub_stmt--;
-	txn_rollback_to_svp(txn, txn->sub_stmt_begin[txn->in_sub_stmt]);
+	txn_rollback_to_svp(txn, &txn->sub_stmt_begin[txn->in_sub_stmt]);
 }
 
 void
@@ -702,10 +727,7 @@ box_txn_savepoint()
 			 "region", "struct txn_savepoint");
 		return NULL;
 	}
-	svp->stmt = stailq_last(&txn->stmts);
-	svp->in_sub_stmt = txn->in_sub_stmt;
-	if (txn->psql_txn != NULL)
-		svp->fk_deferred_count = txn->psql_txn->fk_deferred_count;
+	txn_create_svp(txn, svp);
 	return svp;
 }
 
@@ -731,9 +753,7 @@ box_txn_rollback_to_savepoint(box_txn_savepoint_t *svp)
 		diag_set(ClientError, ER_NO_SUCH_SAVEPOINT);
 		return -1;
 	}
-	txn_rollback_to_svp(txn, svp->stmt);
-	if (txn->psql_txn != NULL)
-		txn->psql_txn->fk_deferred_count = svp->fk_deferred_count;
+	txn_rollback_to_svp(txn, svp);
 	return 0;
 }
 
@@ -769,7 +789,7 @@ txn_on_yield(struct trigger *trigger, void *event)
 	(void) event;
 	struct txn *txn = in_txn();
 	assert(txn != NULL && !txn->can_yield);
-	txn_rollback_to_svp(txn, NULL);
+	txn_rollback_to_svp(txn, &zero_svp);
 	if (txn->has_triggers) {
 		txn_run_triggers(txn, &txn->on_rollback);
 		txn->has_triggers = false;
