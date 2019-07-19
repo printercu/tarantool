@@ -966,3 +966,38 @@ box.execute('SELECT ?', {true})
   rows:
   - [true]
 ...
+-- Make sure that CASE-THEN statement return type is SCALAR in
+-- case two THEN clauses feature different types.
+--
+box.execute("SELECT CASE 1 WHEN 1 THEN x'0000000000' WHEN 2 THEN 'str' END")
+---
+- metadata:
+  - name: CASE 1 WHEN 1 THEN x'0000000000' WHEN 2 THEN 'str' END
+    type: scalar
+  rows:
+  - ["\0\0\0\0\0"]
+...
+box.execute("SELECT CASE 1 WHEN 1 THEN 666 WHEN 2 THEN 123 END")
+---
+- metadata:
+  - name: CASE 1 WHEN 1 THEN 666 WHEN 2 THEN 123 END
+    type: integer
+  rows:
+  - [666]
+...
+box.execute("SELECT CASE 1 WHEN 1 THEN 666 WHEN 2 THEN 123 ELSE 321 END")
+---
+- metadata:
+  - name: CASE 1 WHEN 1 THEN 666 WHEN 2 THEN 123 ELSE 321 END
+    type: integer
+  rows:
+  - [666]
+...
+box.execute("SELECT CASE 1 WHEN 1 THEN 666 WHEN 2 THEN 123 ELSE 'asd' END")
+---
+- metadata:
+  - name: CASE 1 WHEN 1 THEN 666 WHEN 2 THEN 123 ELSE 'asd' END
+    type: scalar
+  rows:
+  - [666]
+...

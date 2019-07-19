@@ -234,3 +234,11 @@ box.execute('SELECT \'9223372036854\' + 1;')
 
 -- Fix BOOLEAN bindings.
 box.execute('SELECT ?', {true})
+
+-- Make sure that CASE-THEN statement return type is SCALAR in
+-- case two THEN clauses feature different types.
+--
+box.execute("SELECT CASE 1 WHEN 1 THEN x'0000000000' WHEN 2 THEN 'str' END")
+box.execute("SELECT CASE 1 WHEN 1 THEN 666 WHEN 2 THEN 123 END")
+box.execute("SELECT CASE 1 WHEN 1 THEN 666 WHEN 2 THEN 123 ELSE 321 END")
+box.execute("SELECT CASE 1 WHEN 1 THEN 666 WHEN 2 THEN 123 ELSE 'asd' END")
