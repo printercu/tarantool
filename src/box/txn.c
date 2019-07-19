@@ -46,10 +46,20 @@ txn_on_stop(struct trigger *trigger, void *event);
 static void
 txn_on_yield(struct trigger *trigger, void *event);
 
+static void
+txn_run_triggers(struct txn *txn, struct rlist *trigger);
+
 static inline void
 fiber_set_txn(struct fiber *fiber, struct txn *txn)
 {
 	fiber->storage.txn = txn;
+}
+
+static void
+dummy_trigger_cb(struct trigger *trigger, void *event)
+{
+	(void)trigger;
+	(void)event;
 }
 
 /**
@@ -58,8 +68,11 @@ fiber_set_txn(struct fiber *fiber, struct txn *txn)
  */
 static struct txn_savepoint zero_svp = {
 	/* .in_sub_stmt = */ 0,
+	/* .has_triggers = */ false,
 	/* .stmt = */ NULL,
 	/* .fk_deferred_count = */ 0,
+	/* .on_commit = */ {RLIST_LINK_INITIALIZER, 0, NULL, NULL},
+	/* .on_rollback = */ {RLIST_LINK_INITIALIZER, 0, NULL, NULL},
 };
 
 /**
@@ -71,8 +84,29 @@ txn_create_svp(struct txn *txn, struct txn_savepoint *svp)
 {
 	svp->in_sub_stmt = txn->in_sub_stmt;
 	svp->stmt = stailq_last(&txn->stmts);
+	svp->has_triggers = txn->has_triggers;
+	if (svp->has_triggers) {
+		trigger_create(&svp->on_commit, dummy_trigger_cb, NULL, NULL);
+		trigger_add(&txn->on_commit, &svp->on_commit);
+		trigger_create(&svp->on_rollback, dummy_trigger_cb, NULL, NULL);
+		trigger_add(&txn->on_rollback, &svp->on_rollback);
+	}
 	if (txn->psql_txn != NULL)
 		svp->fk_deferred_count = txn->psql_txn->fk_deferred_count;
+}
+
+/**
+ * Destroy a savepoint that isn't going to be used anymore.
+ * This function clears dummy commit and rollback triggers
+ * installed by the savepoint.
+ */
+static void
+txn_destroy_svp(struct txn_savepoint *svp)
+{
+	if (svp->has_triggers) {
+		trigger_clear(&svp->on_commit);
+		trigger_clear(&svp->on_rollback);
+	}
 }
 
 static int
@@ -144,6 +178,11 @@ txn_stmt_unref_tuples(struct txn_stmt *stmt)
 static void
 txn_rollback_to_svp(struct txn *txn, struct txn_savepoint *svp)
 {
+	/*
+	 * Undo changes done to the database by the rolled back
+	 * statements. Don't release the tuples as rollback triggers
+	 * might still need them.
+	 */
 	struct txn_stmt *stmt;
 	struct stailq rollback;
 	stailq_cut_tail(&txn->stmts, svp->stmt, &rollback);
@@ -161,10 +200,31 @@ txn_rollback_to_svp(struct txn *txn, struct txn_savepoint *svp)
 			assert(txn->n_applier_rows > 0);
 			txn->n_applier_rows--;
 		}
-		txn_stmt_unref_tuples(stmt);
 		stmt->space = NULL;
 		stmt->row = NULL;
 	}
+	/*
+	 * Remove commit and rollback triggers installed after
+	 * the savepoint was set and run the rollback triggers.
+	 */
+	RLIST_HEAD(on_commit);
+	RLIST_HEAD(on_rollback);
+	if (svp->has_triggers) {
+		rlist_cut_before(&on_commit, &txn->on_commit,
+				 &svp->on_commit.link);
+		rlist_cut_before(&on_rollback, &txn->on_rollback,
+				 &svp->on_rollback.link);
+	} else if (txn->has_triggers) {
+		rlist_splice(&on_commit, &txn->on_commit);
+		rlist_splice(&on_rollback, &txn->on_rollback);
+		txn->has_triggers = false;
+	}
+	txn_run_triggers(txn, &on_rollback);
+
+	/* Release the tuples. */
+	stailq_foreach_entry(stmt, &rollback, next)
+		txn_stmt_unref_tuples(stmt);
+
 	if (txn->psql_txn != NULL)
 		txn->psql_txn->fk_deferred_count = svp->fk_deferred_count;
 }
@@ -362,6 +422,7 @@ txn_commit_stmt(struct txn *txn, struct request *request)
 			goto fail;
 	}
 	--txn->in_sub_stmt;
+	txn_destroy_svp(&txn->sub_stmt_begin[txn->in_sub_stmt]);
 	return 0;
 fail:
 	txn_rollback_stmt(txn);
@@ -371,7 +432,7 @@ fail:
 /*
  * A helper function to process on_commit/on_rollback triggers.
  */
-static inline void
+static void
 txn_run_triggers(struct txn *txn, struct rlist *trigger)
 {
 	/* Rollback triggers must not throw. */
@@ -589,8 +650,9 @@ txn_rollback_stmt(struct txn *txn)
 {
 	if (txn == NULL || txn->in_sub_stmt == 0)
 		return;
-	txn->in_sub_stmt--;
-	txn_rollback_to_svp(txn, &txn->sub_stmt_begin[txn->in_sub_stmt]);
+	struct txn_savepoint *svp = &txn->sub_stmt_begin[--txn->in_sub_stmt];
+	txn_rollback_to_svp(txn, svp);
+	txn_destroy_svp(svp);
 }
 
 void
@@ -790,9 +852,5 @@ txn_on_yield(struct trigger *trigger, void *event)
 	struct txn *txn = in_txn();
 	assert(txn != NULL && !txn->can_yield);
 	txn_rollback_to_svp(txn, &zero_svp);
-	if (txn->has_triggers) {
-		txn_run_triggers(txn, &txn->on_rollback);
-		txn->has_triggers = false;
-	}
 	txn->is_aborted_by_yield = true;
 }
