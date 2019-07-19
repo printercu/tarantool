@@ -182,7 +182,7 @@ struct txn {
 	 * First statement at each statement-level.
 	 * Needed to rollback sub statements.
 	 */
-	struct stailq_entry *sub_stmt_begin[TXN_SUB_STMT_MAX];
+	struct txn_savepoint sub_stmt_begin[TXN_SUB_STMT_MAX + 1];
 	/** LSN of this transaction when written to WAL. */
 	int64_t signature;
 	/** Engine involved in multi-statement transaction. */
@@ -390,8 +390,9 @@ txn_current_stmt(struct txn *txn)
 {
 	if (txn->in_sub_stmt == 0)
 		return NULL;
-	struct stailq_entry *stmt = txn->sub_stmt_begin[txn->in_sub_stmt - 1];
-	stmt = stmt != NULL ? stailq_next(stmt) : stailq_first(&txn->stmts);
+	struct txn_savepoint *svp = &txn->sub_stmt_begin[txn->in_sub_stmt - 1];
+	struct stailq_entry *stmt = svp->stmt != NULL ?
+		stailq_next(svp->stmt) : stailq_first(&txn->stmts);
 	return stailq_entry(stmt, struct txn_stmt, next);
 }
 
