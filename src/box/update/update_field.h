@@ -33,7 +33,9 @@
 #include "trivia/util.h"
 #include "tt_static.h"
 #include <stdint.h>
+#include "trivia/util.h"
 #include "bit/int96.h"
+#include "tt_static.h"
 
 /**
  * This file is a link between all the update operations for all
@@ -188,6 +190,15 @@ struct update_op {
 	uint32_t new_field_len;
 	/** Opcode symbol: = + - / ... */
 	char opcode;
+	/** JSON path to the field to update. */
+	const char *path;
+	/** Length of the path. */
+	int path_len;
+	/**
+	 * Current offset in the path. It is propagated as the
+	 * operation is going down into a tuple internals.
+	 */
+	int path_offset;
 };
 
 /**
@@ -203,6 +214,16 @@ struct update_op {
 int
 update_op_decode(struct update_op *op, int index_base,
 		 struct tuple_dictionary *dict, const char **expr);
+
+/**
+ * Check if the operation should be applied on the current path
+ * node.
+ */
+static inline bool
+update_op_is_term(const struct update_op *op)
+{
+	return op->path_offset == op->path_len;
+}
 
 /* }}} update_op */
 
@@ -228,6 +249,14 @@ enum update_type {
 	 * of individual fields.
 	 */
 	UPDATE_ARRAY,
+	/**
+	 * Field of this type stores such update, that has
+	 * non-empty JSON path non-intersected with any another
+	 * update. In such optimized case it is possible to do not
+	 * allocate neither fields nor ops nor anything for path
+	 * nodes. And this is the most common case.
+	 */
+	UPDATE_BAR,
 };
 
 /**
@@ -262,6 +291,43 @@ struct update_field {
 		struct {
 			struct rope *rope;
 		} array;
+		/**
+		 * Bar update - by JSON path non-intersected with
+		 * any another update.
+		 */
+		struct {
+			/** Bar update is a single operation. */
+			struct update_op *op;
+			/**
+			 * For insertion/deletion to change parent
+			 * header.
+			 */
+			const char *parent;
+			union {
+				/**
+				 * For scalar op; insertion into
+				 * array; deletion. This is the
+				 * point to delete, change or
+				 * insert after.
+				 */
+				struct {
+					const char *point;
+					uint32_t point_size;
+				};
+				/*
+				 * For insertion into map. New
+				 * key. On insertion into a map
+				 * there is no strict order as in
+				 * array and no point. The field
+				 * is inserted just right after
+				 * the parent header.
+				 */
+				struct {
+					const char *key;
+					uint32_t key_len;
+				};
+			};
+		} bar;
 	};
 };
 
@@ -332,6 +398,18 @@ OP_DECL_GENERIC(array)
 
 /* }}} update_field.array */
 
+/* {{{ update_field.bar */
+
+OP_DECL_GENERIC(bar)
+
+/* }}} update_field.bar */
+
+/* {{{ update_field.nop */
+
+OP_DECL_GENERIC(nop)
+
+/* }}} update_field.nop */
+
 #undef OP_DECL_GENERIC
 
 /* {{{ Common helpers. */
@@ -343,6 +421,8 @@ do_op_##op_type(struct update_op *op, struct update_field *field)		\
 	switch (field->type) {							\
 	case UPDATE_ARRAY:							\
 		return do_op_array_##op_type(op, field);			\
+	case UPDATE_NOP:							\
+		return do_op_nop_##op_type(op, field);				\
 	default:								\
 		unreachable();							\
 	}									\
@@ -424,6 +504,12 @@ static inline int
 update_err_double(const struct update_op *op)
 {
 	return update_err(op, "double update of the same field");
+}
+
+static inline int
+update_err_bad_json(const struct update_op *op, int pos)
+{
+	return update_err(op, tt_sprintf("invalid JSON in position %d", pos));
 }
 
 /** }}} Error helpers. */
