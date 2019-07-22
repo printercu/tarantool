@@ -163,6 +163,8 @@ struct index_opts {
 	 * filled after running ANALYZE command.
 	 */
 	struct index_stat *stat;
+	/** Identifier of the functional index function. */
+	uint32_t functional_fid;
 };
 
 extern const struct index_opts index_opts_default;
@@ -207,6 +209,8 @@ index_opts_cmp(const struct index_opts *o1, const struct index_opts *o2)
 		return o1->run_size_ratio < o2->run_size_ratio ? -1 : 1;
 	if (o1->bloom_fpr != o2->bloom_fpr)
 		return o1->bloom_fpr < o2->bloom_fpr ? -1 : 1;
+	if (o1->functional_fid != o2->functional_fid)
+		return o1->functional_fid - o2->functional_fid;
 	return 0;
 }
 
@@ -296,6 +300,18 @@ index_def_update_optionality(struct index_def *def, uint32_t min_field_count)
 {
 	key_def_update_optionality(def->key_def, min_field_count);
 	key_def_update_optionality(def->cmp_def, min_field_count);
+}
+
+/**
+ * Update func pointer for functional index key definitions.
+ * @param def Index def, containing key definitions to update.
+ * @param func The functional index function pointer.
+ */
+static inline void
+index_def_update_func(struct index_def *def, struct func *func)
+{
+	def->key_def->func_index_func = func;
+	def->cmp_def->func_index_func = func;
 }
 
 /**

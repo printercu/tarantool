@@ -35,6 +35,7 @@
 #include "errinj.h"
 #include "memory.h"
 #include "fiber.h"
+#include "func_key.h"
 #include "tuple.h"
 #include <third_party/qsort_arg.h>
 #include <small/mempool.h>
@@ -769,6 +770,190 @@ memtx_tree_index_replace_multikey(struct index *base, struct tuple *old_tuple,
 	return 0;
 }
 
+
+/** Release a memory is allocated for func_key_hint. */
+static void
+memtx_tree_data_func_hint_destructor(struct memtx_tree_data *data)
+{
+	func_key_hint_delete(data->tuple, data->hint);
+}
+
+/**
+ * The journal for multikey functional index replace operatoin
+ * is required to rollback an incomplete action, restore the
+ * original func_key_hint(s) hints bouth as to commit a completed
+ * replace action and destruct useless func_key_hint(s) hints.
+*/
+struct journal_entry {
+	/** An inserted record copy. */
+	struct memtx_tree_data inserted;
+	/** A replaced record copy. */
+	struct memtx_tree_data replaced;
+};
+
+/**
+ * Rollback a sequence of memtx_tree_index_replace_multikey_one
+ * insertions for functional index. Routine uses given journal
+ * to return given index object in it's original state.
+ */
+static void
+memtx_tree_index_replace_functional_rollback(struct memtx_tree_index *index,
+						struct journal_entry *journal,
+						int journal_sz)
+{
+	for (int i = 0; i < journal_sz; i++) {
+		if (journal[i].replaced.tuple != NULL) {
+			memtx_tree_insert(&index->tree, journal[i].replaced,
+					  NULL);
+		} else {
+			memtx_tree_delete_value(&index->tree,
+						journal[i].inserted, NULL);
+		}
+		memtx_tree_data_func_hint_destructor(&journal[i].inserted);
+	}
+}
+
+/**
+ * Commit a sequence of memtx_tree_index_replace_multikey_one
+ * insertions for functional index. Rotine uses given operations
+ * journal to release unused memory.
+ */
+static void
+memtx_tree_index_replace_functional_commit(struct memtx_tree_index *index,
+						struct journal_entry *journal,
+						int journal_sz)
+{
+	(void) index;
+	for (int i = 0; i < journal_sz; i++) {
+		if (journal[i].replaced.tuple == NULL)
+			continue;
+		memtx_tree_data_func_hint_destructor(&journal[i].replaced);
+	}
+}
+
+/**
+ * Functional index replace method works like
+ * memtx_tree_index_replace_multikey exept few moments.
+ * It uses functional index function from key definition
+ * to evaluate a key and allocate it on region. Then each
+ * returned key is reallocated in engine's memory as
+ * func_key_hint object and is used as comparison hint.
+ * To control func_key_hint(s) lifecycle in case of functional
+ * index we use a tiny journal object is allocated on region.
+ * It allows to restore original nodes with their original
+ * func_key_hint(s) pointers in case of failure and release
+ * useless hints of replaced items in case of success.
+ */
+static int
+memtx_tree_index_replace_functional(struct index *base, struct tuple *old_tuple,
+			struct tuple *new_tuple, enum dup_replace_mode mode,
+			struct tuple **result)
+{
+	struct memtx_tree_index *index = (struct memtx_tree_index *)base;
+	struct key_def *cmp_def = memtx_tree_cmp_def(&index->tree);
+	assert(key_def_is_functional(cmp_def));
+
+	int rc = -1;
+	struct region *region = &fiber()->gc;
+	size_t region_svp = region_used(region);
+
+	*result = NULL;
+	const char *key, *key_end;
+	uint32_t key_sz, key_cnt;
+	struct func_key_iterator it;
+	if (new_tuple != NULL) {
+		key = func_key_extract(new_tuple, cmp_def->func_index_func,
+				       &key_end, &key_cnt);
+		if (key == NULL)
+			goto end;
+
+		int journal_idx = 0;
+		struct journal_entry *journal =
+			region_alloc(region, key_cnt * sizeof(*journal));
+		if (journal == NULL) {
+			diag_set(OutOfMemory, key_cnt * sizeof(*journal),
+				 "region", "journal");
+			goto end;
+		}
+
+		int err = 0;
+		func_key_iterator_create(&it, key, key_end, cmp_def, true);
+		while (func_key_iterator_next(&it, &key, &key_sz) == 0 &&
+		       key != NULL) {
+			hint_t key_hint = func_key_hint_new(new_tuple, key,
+							    key_sz);
+			if (key_hint == HINT_NONE) {
+				err = -1;
+				break;
+			}
+
+			/* Perform insertion, log it in journal. */
+			bool is_multikey_conflict;
+			journal[journal_idx].replaced.tuple = NULL;
+			journal[journal_idx].inserted.tuple = new_tuple;
+			journal[journal_idx].inserted.hint = key_hint;
+			err = memtx_tree_index_replace_multikey_one(index,
+						old_tuple, new_tuple, mode,
+						key_hint,
+						&journal[journal_idx].replaced,
+						&is_multikey_conflict);
+			if (err != 0)
+				break;
+			/**
+			 * Modify a 'replace' record of journal
+			 * because an original node shouldn't be
+			 * restored in case of multikey conflict.
+			 */
+			if (is_multikey_conflict)
+				journal[journal_idx].replaced.tuple = NULL;
+			else if (journal[journal_idx].replaced.tuple != NULL)
+				*result = journal[journal_idx].replaced.tuple;
+
+			++journal_idx;
+		}
+		if (key != NULL || err != 0) {
+			memtx_tree_index_replace_functional_rollback(index,
+							journal, journal_idx);
+			goto end;
+		}
+		if (*result != NULL) {
+			assert(old_tuple == NULL || old_tuple == *result);
+			old_tuple = *result;
+		}
+		memtx_tree_index_replace_functional_commit(index,
+						journal, journal_idx);
+	}
+	if (old_tuple != NULL) {
+		key = func_key_extract(old_tuple, cmp_def->func_index_func,
+				       &key_end, &key_cnt);
+		if (key == NULL)
+			goto end;
+		struct memtx_tree_data data, deleted_data;
+		data.tuple = old_tuple;
+		func_key_iterator_create(&it, key, key_end, cmp_def, true);
+		while (func_key_iterator_next(&it, &key, &key_sz) == 0 &&
+		       key != NULL) {
+			data.hint = (hint_t) key; /* Raw data. */
+			deleted_data.tuple = NULL;
+			memtx_tree_delete_value(&index->tree, data,
+						&deleted_data);
+			if (deleted_data.tuple != NULL) {
+				/*
+				 * Release related hint on
+				 * successfull node deletion.
+				 */
+				memtx_tree_data_func_hint_destructor(
+								&deleted_data);
+			}
+		}
+		assert(key == NULL);
+	}
+	rc = 0;
+end:
+	region_truncate(region, region_svp);
+	return rc;
+}
+
 static struct iterator *
 memtx_tree_index_create_iterator(struct index *base, enum iterator_type type,
 				 const char *key, uint32_t part_count)
@@ -900,13 +1085,52 @@ memtx_tree_index_build_next_multikey(struct index *base, struct tuple *tuple)
 	return 0;
 }
 
+static int
+memtx_tree_index_build_next_functional(struct index *base, struct tuple *tuple)
+{
+	struct memtx_tree_index *index = (struct memtx_tree_index *)base;
+	struct key_def *cmp_def = memtx_tree_cmp_def(&index->tree);
+	assert(key_def_is_functional(cmp_def));
+
+	struct region *region = &fiber()->gc;
+	size_t region_svp = region_used(region);
+
+	uint32_t key_sz, key_cnt;
+	const char *key, *key_end;
+	key = func_key_extract(tuple, cmp_def->func_index_func,
+				&key_end, &key_cnt);
+	if (key == NULL)
+		return -1;
+
+	uint32_t insert_idx = index->build_array_size;
+	struct func_key_iterator it;
+	func_key_iterator_create(&it, key, key_end, cmp_def, true);
+	while (func_key_iterator_next(&it, &key, &key_sz) == 0 && key != NULL) {
+		hint_t key_hint = func_key_hint_new(tuple, key, key_sz);
+		if (key_hint == HINT_NONE)
+			goto error;
+		if (memtx_tree_index_build_array_append(index, tuple,
+							key_hint) != 0)
+			goto error;
+	}
+	assert(key == NULL);
+	region_truncate(region, region_svp);
+	return 0;
+error:
+	for (uint32_t i = insert_idx; i < index->build_array_size; i++)
+		memtx_tree_data_func_hint_destructor(&index->build_array[i]);
+	region_truncate(region, region_svp);
+	return -1;
+}
+
 /**
  * Process build_array of specified index and remove duplicates
  * of equal tuples (in terms of index's cmp_def and have same
  * tuple pointer). The build_array is expected to be sorted.
  */
 static void
-memtx_tree_index_build_array_deduplicate(struct memtx_tree_index *index)
+memtx_tree_index_build_array_deduplicate(struct memtx_tree_index *index,
+			void (*data_destructor)(struct memtx_tree_data *data))
 {
 	if (index->build_array_size == 0)
 		return;
@@ -924,10 +1148,18 @@ memtx_tree_index_build_array_deduplicate(struct memtx_tree_index *index)
 			if (++w_idx == r_idx)
 				continue;
 			index->build_array[w_idx] = index->build_array[r_idx];
+			if (data_destructor == NULL)
+				continue;
+			for (size_t i = w_idx + 1; i < r_idx; i++)
+				data_destructor(&index->build_array[i]);
 		}
 		r_idx++;
 	}
 	index->build_array_size = w_idx + 1;
+	if (data_destructor != NULL) {
+		for (size_t i = index->build_array_size + 1; i < r_idx; i++)
+			data_destructor(&index->build_array[i]);
+	}
 }
 
 static void
@@ -945,7 +1177,10 @@ memtx_tree_index_end_build(struct index *base)
 		 * the following memtx_tree_build assumes that
 		 * all keys are unique.
 		 */
-		memtx_tree_index_build_array_deduplicate(index);
+		memtx_tree_index_build_array_deduplicate(index, NULL);
+	} else if (key_def_is_functional(cmp_def)) {
+		memtx_tree_index_build_array_deduplicate(index,
+				memtx_tree_data_func_hint_destructor);
 	}
 	memtx_tree_build(&index->tree, index->build_array,
 			 index->build_array_size);
@@ -1072,6 +1307,72 @@ static const struct index_vtab memtx_tree_index_multikey_vtab = {
 	/* .end_build = */ memtx_tree_index_end_build,
 };
 
+static const struct index_vtab memtx_tree_index_functional_vtab = {
+	/* .destroy = */ memtx_tree_index_destroy,
+	/* .commit_create = */ generic_index_commit_create,
+	/* .abort_create = */ generic_index_abort_create,
+	/* .commit_modify = */ generic_index_commit_modify,
+	/* .commit_drop = */ generic_index_commit_drop,
+	/* .update_def = */ memtx_tree_index_update_def,
+	/* .depends_on_pk = */ memtx_tree_index_depends_on_pk,
+	/* .def_change_requires_rebuild = */
+		memtx_index_def_change_requires_rebuild,
+	/* .size = */ memtx_tree_index_size,
+	/* .bsize = */ memtx_tree_index_bsize,
+	/* .min = */ generic_index_min,
+	/* .max = */ generic_index_max,
+	/* .random = */ memtx_tree_index_random,
+	/* .count = */ memtx_tree_index_count,
+	/* .get = */ memtx_tree_index_get,
+	/* .replace = */ memtx_tree_index_replace_functional,
+	/* .create_iterator = */ memtx_tree_index_create_iterator,
+	/* .create_snapshot_iterator = */
+		memtx_tree_index_create_snapshot_iterator,
+	/* .stat = */ generic_index_stat,
+	/* .compact = */ generic_index_compact,
+	/* .reset_stat = */ generic_index_reset_stat,
+	/* .begin_build = */ memtx_tree_index_begin_build,
+	/* .reserve = */ memtx_tree_index_reserve,
+	/* .build_next = */ memtx_tree_index_build_next_functional,
+	/* .end_build = */ memtx_tree_index_end_build,
+};
+
+/**
+ * A disabled index vtab provides safe dummy methods for
+ * 'inactive' index. It is required to perform a fault-tolerant
+ * recovery from snapshoot in case of functional index (because
+ * key defintion is not completely initialized at that moment).
+ */
+static const struct index_vtab memtx_tree_index_disabled_vtab = {
+	/* .destroy = */ memtx_tree_index_destroy,
+	/* .commit_create = */ generic_index_commit_create,
+	/* .abort_create = */ generic_index_abort_create,
+	/* .commit_modify = */ generic_index_commit_modify,
+	/* .commit_drop = */ generic_index_commit_drop,
+	/* .update_def = */ generic_index_update_def,
+	/* .depends_on_pk = */ generic_index_depends_on_pk,
+	/* .def_change_requires_rebuild = */
+		generic_index_def_change_requires_rebuild,
+	/* .size = */ generic_index_size,
+	/* .bsize = */ generic_index_bsize,
+	/* .min = */ generic_index_min,
+	/* .max = */ generic_index_max,
+	/* .random = */ generic_index_random,
+	/* .count = */ generic_index_count,
+	/* .get = */ generic_index_get,
+	/* .replace = */ disabled_index_replace,
+	/* .create_iterator = */ generic_index_create_iterator,
+	/* .create_snapshot_iterator = */
+		generic_index_create_snapshot_iterator,
+	/* .stat = */ generic_index_stat,
+	/* .compact = */ generic_index_compact,
+	/* .reset_stat = */ generic_index_reset_stat,
+	/* .begin_build = */ generic_index_begin_build,
+	/* .reserve = */ generic_index_reserve,
+	/* .build_next = */ disabled_index_build_next,
+	/* .end_build = */ generic_index_end_build,
+};
+
 struct index *
 memtx_tree_index_new(struct memtx_engine *memtx, struct index_def *def)
 {
@@ -1082,9 +1383,17 @@ memtx_tree_index_new(struct memtx_engine *memtx, struct index_def *def)
 			 "malloc", "struct memtx_tree_index");
 		return NULL;
 	}
-	const struct index_vtab *vtab = def->key_def->is_multikey ?
-					&memtx_tree_index_multikey_vtab :
-					&memtx_tree_index_vtab;
+	const struct index_vtab *vtab;
+	if (key_def_is_functional(def->key_def)) {
+		if (def->key_def->func_index_func == NULL)
+			vtab = &memtx_tree_index_disabled_vtab;
+		else
+			vtab = &memtx_tree_index_functional_vtab;
+	} else if (def->key_def->is_multikey) {
+		vtab = &memtx_tree_index_multikey_vtab;
+	} else {
+		vtab = &memtx_tree_index_vtab;
+	}
 	if (index_create(&index->base, (struct engine *)memtx,
 			 vtab, def) != 0) {
 		free(index);

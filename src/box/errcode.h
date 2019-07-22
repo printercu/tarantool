@@ -250,6 +250,7 @@ struct errcode_record {
 	/*195 */_(ER_CREATE_CK_CONSTRAINT,	"Failed to create check constraint '%s': %s") \
 	/*196 */_(ER_CK_CONSTRAINT_FAILED,	"Check constraint failed '%s': %s") \
 	/*197 */_(ER_SQL_COLUMN_COUNT,		"Unequal number of entries in row expression: left side has %u, but right side - %u") \
+	/*198 */_(ER_FUNCTIONAL_INDEX_FUNC_ERROR,"Functional index function '%s' error: %s") \
 
 /*
  * !IMPORTANT! Please follow instructions at start of the file

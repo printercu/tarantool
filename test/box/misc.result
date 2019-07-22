@@ -526,6 +526,7 @@ t;
   195: box.error.CREATE_CK_CONSTRAINT
   196: box.error.CK_CONSTRAINT_FAILED
   197: box.error.SQL_COLUMN_COUNT
+  198: box.error.FUNCTIONAL_INDEX_FUNC_ERROR
 ...
 test_run:cmd("setopt delimiter ''");
 ---

@@ -192,6 +192,13 @@ struct key_def {
 	 * unique_part_count == part count of a merged key_def.
 	 */
 	uint32_t unique_part_count;
+	/**
+	 * Count of parts in functional index defintion.
+	 * All functional_part_count key_part(s) of an
+	 * initialized key def instance have func != NULL pointer.
+	 * != 0 iff it is functional index definition.
+	*/
+	uint32_t functional_part_count;
 	/** True, if at least one part can store NULL. */
 	bool is_nullable;
 	/** True if some key part has JSON path. */
@@ -205,6 +212,8 @@ struct key_def {
 	bool has_optional_parts;
 	/** Key fields mask. @sa column_mask.h for details. */
 	uint64_t column_mask;
+	/** A pointer to functional index function. */
+	struct func *func_index_func;
 	/**
 	 * In case of the multikey index, a pointer to the
 	 * JSON path string, the path to the root node of
@@ -330,7 +339,8 @@ key_def_sizeof(uint32_t part_count, uint32_t path_pool_size)
  * and initialize its parts.
  */
 struct key_def *
-key_def_new(const struct key_part_def *parts, uint32_t part_count);
+key_def_new(const struct key_part_def *parts, uint32_t part_count,
+	    bool is_functional);
 
 /**
  * Dump part definitions of the given key def.
@@ -340,6 +350,16 @@ key_def_new(const struct key_part_def *parts, uint32_t part_count);
 int
 key_def_dump_parts(const struct key_def *def, struct key_part_def *parts,
 		   struct region *region);
+
+/**
+ * Return true if a given key definition defines functional index
+ * key.
+ */
+static inline bool
+key_def_is_functional(const struct key_def *key_def)
+{
+	return key_def->functional_part_count > 0;
+}
 
 /**
  * Update 'has_optional_parts' of @a key_def with correspondence

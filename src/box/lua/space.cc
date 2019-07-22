@@ -335,6 +335,11 @@ lbox_fillspace(struct lua_State *L, struct space *space, int i)
 			lua_setfield(L, -2, "dimension");
 		}
 
+		if (index_opts->functional_fid > 0) {
+			lua_pushnumber(L, index_opts->functional_fid);
+			lua_setfield(L, -2, "func_id");
+		}
+
 		lua_pushstring(L, index_type_strs[index_def->type]);
 		lua_setfield(L, -2, "type");
 
@@ -629,6 +634,8 @@ box_lua_space_init(struct lua_State *L)
 	lua_setfield(L, -2, "VSEQUENCE_ID");
 	lua_pushnumber(L, BOX_SPACE_SEQUENCE_ID);
 	lua_setfield(L, -2, "SPACE_SEQUENCE_ID");
+	lua_pushnumber(L, BOX_FUNC_INDEX_ID);
+	lua_setfield(L, -2, "FUNC_INDEX_ID");
 	lua_pushnumber(L, BOX_SYSTEM_ID_MIN);
 	lua_setfield(L, -2, "SYSTEM_ID_MIN");
 	lua_pushnumber(L, BOX_SYSTEM_ID_MAX);

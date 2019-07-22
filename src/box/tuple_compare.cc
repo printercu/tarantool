@@ -1271,6 +1271,80 @@ static const comparator_with_key_signature cmp_wk_arr[] = {
 	KEY_COMPARATOR(1, FIELD_TYPE_STRING  , 2, FIELD_TYPE_STRING)
 };
 
+template<bool is_nullable>
+static inline int
+functional_compare(struct tuple *tuple_a, hint_t tuple_a_hint,
+		   struct tuple *tuple_b, hint_t tuple_b_hint,
+		   struct key_def *key_def)
+{
+	assert(key_def_is_functional(key_def));
+	assert(is_nullable == key_def->is_nullable);
+
+	const char *key_a = (const char *)tuple_a_hint;
+	const char *key_b = (const char *)tuple_b_hint;
+	assert(mp_typeof(*key_a) == MP_ARRAY);
+	uint32_t part_count_a = mp_decode_array(&key_a);
+	assert(mp_typeof(*key_b) == MP_ARRAY);
+	uint32_t part_count_b = mp_decode_array(&key_b);
+
+	uint32_t key_part_count = MIN(part_count_a, part_count_b);
+	uint32_t part_count = MIN(key_def->functional_part_count,
+				  key_part_count);
+	int rc = key_compare_parts<is_nullable>(key_a, key_b, part_count,
+						key_def);
+	if (rc != 0)
+		return rc;
+	/*
+	 * Primary index definiton key compare.
+	 * It cannot contain nullable parts so the code is
+	 * simplified correspondingly.
+	 */
+	const char *tuple_a_raw = tuple_data(tuple_a);
+	const char *tuple_b_raw = tuple_data(tuple_b);
+	struct tuple_format *format_a = tuple_format(tuple_a);
+	struct tuple_format *format_b = tuple_format(tuple_b);
+	const uint32_t *field_map_a = tuple_field_map(tuple_a);
+	const uint32_t *field_map_b = tuple_field_map(tuple_b);
+	const char *field_a, *field_b;
+	for (uint32_t i = key_def->functional_part_count;
+	     i < key_def->part_count; i++) {
+		struct key_part *part = &key_def->parts[i];
+		field_a = tuple_field_raw_by_part(format_a, tuple_a_raw,
+						  field_map_a, part,
+						  MULTIKEY_NONE);
+		field_b = tuple_field_raw_by_part(format_b, tuple_b_raw,
+						  field_map_b, part,
+						  MULTIKEY_NONE);
+		assert(field_a != NULL && field_b != NULL);
+		rc = tuple_compare_field(field_a, field_b, part->type,
+					 part->coll);
+		if (rc != 0)
+			return rc;
+		else
+			continue;
+	}
+	return 0;
+}
+
+template<bool is_nullable>
+static inline int
+functional_compare_with_key(struct tuple *tuple, hint_t tuple_hint,
+			    const char *key, uint32_t part_count,
+			    hint_t key_hint, struct key_def *key_def)
+{
+	(void)tuple; (void)key_hint;
+	assert(key_def->functional_part_count > 0);
+	assert(is_nullable == key_def->is_nullable);
+	const char *tuple_key = (const char *)tuple_hint;
+	assert(mp_typeof(*tuple_key) == MP_ARRAY);
+
+	uint32_t tuple_key_count = mp_decode_array(&tuple_key);
+	part_count = MIN(part_count, tuple_key_count);
+	part_count = MIN(part_count, key_def->functional_part_count);
+	return key_compare_parts<is_nullable>(tuple_key, key, part_count,
+					      key_def);
+}
+
 #undef KEY_COMPARATOR
 
 /* }}} tuple_compare_with_key */
@@ -1592,7 +1666,7 @@ tuple_hint(struct tuple *tuple, struct key_def *key_def)
 }
 
 static hint_t
-key_hint_multikey(const char *key, uint32_t part_count, struct key_def *key_def)
+key_hint_stub(const char *key, uint32_t part_count, struct key_def *key_def)
 {
 	(void) key;
 	(void) part_count;
@@ -1600,19 +1674,19 @@ key_hint_multikey(const char *key, uint32_t part_count, struct key_def *key_def)
 	/*
 	 * Multikey hint for tuple is an index of the key in
 	 * array, it always must be defined. While
-	 * tuple_hint_multikey assumes that it must be
+	 * key_hint_stub assumes that it must be
 	 * initialized manually (so it mustn't be called),
 	 * the virtual method for a key makes sense. Overriding
 	 * this method such way, we extend existend code to
 	 * do nothing on key hint calculation an it is valid
 	 * because it is never used(unlike tuple hint).
 	 */
-	assert(key_def->is_multikey);
+	assert(key_def->is_multikey || key_def_is_functional(key_def));
 	return HINT_NONE;
 }
 
 static hint_t
-tuple_hint_multikey(struct tuple *tuple, struct key_def *key_def)
+key_hint_stub(struct tuple *tuple, struct key_def *key_def)
 {
 	(void) tuple;
 	(void) key_def;
@@ -1641,9 +1715,9 @@ key_def_set_hint_func(struct key_def *def)
 static void
 key_def_set_hint_func(struct key_def *def)
 {
-	if (def->is_multikey) {
-		def->key_hint = key_hint_multikey;
-		def->tuple_hint = tuple_hint_multikey;
+	if (def->is_multikey || key_def_is_functional(def)) {
+		def->key_hint = key_hint_stub;
+		def->tuple_hint = key_hint_stub;
 		return;
 	}
 	switch (def->parts->type) {
@@ -1769,10 +1843,24 @@ key_def_set_compare_func_json(struct key_def *def)
 	}
 }
 
+template<bool is_nullable>
+static void
+key_def_set_compare_func_functional(struct key_def *def)
+{
+	assert(key_def_is_functional(def));
+	def->tuple_compare = functional_compare<is_nullable>;
+	def->tuple_compare_with_key = functional_compare_with_key<is_nullable>;
+}
+
 void
 key_def_set_compare_func(struct key_def *def)
 {
-	if (!key_def_has_collation(def) &&
+	if (key_def_is_functional(def)) {
+		if (def->is_nullable)
+			key_def_set_compare_func_functional<true>(def);
+		else
+			key_def_set_compare_func_functional<false>(def);
+	} else if (!key_def_has_collation(def) &&
 	    !def->is_nullable && !def->has_json_paths) {
 		key_def_set_compare_func_fast(def);
 	} else if (!def->has_json_paths) {

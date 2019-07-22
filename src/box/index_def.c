@@ -50,6 +50,7 @@ const struct index_opts index_opts_default = {
 	/* .bloom_fpr           = */ 0.05,
 	/* .lsn                 = */ 0,
 	/* .stat                = */ NULL,
+	/* .func                = */ 0,
 };
 
 const struct opt_def index_opts_reg[] = {
@@ -63,6 +64,7 @@ const struct opt_def index_opts_reg[] = {
 	OPT_DEF("run_size_ratio", OPT_FLOAT, struct index_opts, run_size_ratio),
 	OPT_DEF("bloom_fpr", OPT_FLOAT, struct index_opts, bloom_fpr),
 	OPT_DEF("lsn", OPT_INT64, struct index_opts, lsn),
+	OPT_DEF("func", OPT_UINT32, struct index_opts, functional_fid),
 	OPT_DEF_LEGACY("sql"),
 	OPT_END,
 };
@@ -251,8 +253,15 @@ index_def_to_key_def(struct rlist *index_defs, int *size)
 {
 	int key_count = 0;
 	struct index_def *index_def;
-	rlist_foreach_entry(index_def, index_defs, link)
+	rlist_foreach_entry(index_def, index_defs, link) {
+		/*
+		 * Don't use functional index key definition
+		 * to build a space format.
+		 */
+		if (key_def_is_functional(index_def->key_def))
+			continue;
 		key_count++;
+	}
 	size_t sz = sizeof(struct key_def *) * key_count;
 	struct key_def **keys = (struct key_def **) region_alloc(&fiber()->gc,
 								 sz);
@@ -262,8 +271,11 @@ index_def_to_key_def(struct rlist *index_defs, int *size)
 	}
 	*size = key_count;
 	key_count = 0;
-	rlist_foreach_entry(index_def, index_defs, link)
+	rlist_foreach_entry(index_def, index_defs, link) {
+		if (key_def_is_functional(index_def->key_def))
+			continue;
 		keys[key_count++] = index_def->key_def;
+	}
 	return keys;
 }
 
@@ -294,6 +306,11 @@ index_def_is_valid(struct index_def *index_def, const char *space_name)
 	if (index_def->iid == 0 && index_def->key_def->is_multikey) {
 		diag_set(ClientError, ER_MODIFY_INDEX, index_def->name,
 			 space_name, "primary key cannot be multikey");
+		return false;
+	}
+	if (index_def->iid == 0 && key_def_is_functional(index_def->key_def)) {
+		diag_set(ClientError, ER_MODIFY_INDEX, index_def->name,
+			space_name, "primary key cannot be functional");
 		return false;
 	}
 	for (uint32_t i = 0; i < index_def->key_def->part_count; i++) {

@@ -102,6 +102,7 @@ add_library(box STATIC
     fk_constraint.c
     func.c
     func_def.c
+    func_key.c
     alter.cc
     schema.cc
     schema_def.c
