@@ -2704,8 +2704,17 @@ case OP_ApplyType: {
 		assert(pIn1 <= &p->aMem[(p->nMem+1 - p->nCursor)]);
 		assert(memIsValid(pIn1));
 		if (mem_apply_type(pIn1, type) != 0) {
-			diag_set(ClientError, ER_SQL_TYPE_MISMATCH,
-				 sql_value_text(pIn1),
+			const char *value;
+			if ((pIn1->flags & MEM_Subtype) != 0 &&
+			    pIn1->subtype == SQL_SUBTYPE_MSGPACK) {
+				if (mp_typeof(*pIn1->z) == MP_MAP)
+					value = "map";
+				else
+					value = "array";
+			} else {
+				value = (const char *)sql_value_text(pIn1);
+			}
+			diag_set(ClientError, ER_SQL_TYPE_MISMATCH, value,
 				 field_type_strs[type]);
 			goto abort_due_to_error;
 		}
