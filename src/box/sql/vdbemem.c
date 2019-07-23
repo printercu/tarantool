@@ -275,7 +275,7 @@ sqlVdbeMemNulTerminate(Mem * pMem)
  * user and the latter is an internal programming error.
  */
 int
-sqlVdbeMemStringify(Mem * pMem, u8 bForce)
+sqlVdbeMemStringify(Mem * pMem)
 {
 	int fg = pMem->flags;
 	const int nByte = 32;
@@ -292,16 +292,17 @@ sqlVdbeMemStringify(Mem * pMem, u8 bForce)
 	}
 	if (fg & MEM_Int) {
 		sql_snprintf(nByte, pMem->z, "%lld", pMem->u.i);
+		pMem->flags &= ~MEM_Int;
 	} else if ((fg & MEM_Bool) != 0) {
 		sql_snprintf(nByte, pMem->z, "%s", pMem->u.b ? "true" : "false");
+		pMem->flags &= ~MEM_Bool;
 	} else {
 		assert(fg & MEM_Real);
 		sql_snprintf(nByte, pMem->z, "%!.15g", pMem->u.r);
+		pMem->flags &= ~MEM_Real;
 	}
 	pMem->n = sqlStrlen30(pMem->z);
 	pMem->flags |= MEM_Str | MEM_Term;
-	if (bForce)
-		pMem->flags &= ~(MEM_Int | MEM_Real);
 	return 0;
 }
 
@@ -1107,7 +1108,7 @@ valueToText(sql_value * pVal)
 		pVal->flags |= MEM_Str;
 		sqlVdbeMemNulTerminate(pVal);	/* IMP: R-31275-44060 */
 	} else {
-		sqlVdbeMemStringify(pVal, 0);
+		sqlVdbeMemStringify(pVal);
 		assert(0 == (1 & SQL_PTR_TO_INT(pVal->z)));
 	}
 	return pVal->z;

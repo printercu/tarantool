@@ -183,7 +183,7 @@ vdbeTakeBranch(int iSrcLine, u8 I, u8 M)
  * already. Return non-zero if a malloc() fails.
  */
 #define Stringify(P)						\
-	if(((P)->flags&(MEM_Str|MEM_Blob))==0 && sqlVdbeMemStringify(P,0)) \
+	if(((P)->flags&(MEM_Str|MEM_Blob))==0 && sqlVdbeMemStringify(P)) \
 	{ goto no_mem; }
 
 /*
@@ -333,7 +333,7 @@ mem_apply_type(struct Mem *record, enum field_type type)
 		 */
 		if ((record->flags & MEM_Str) == 0) {
 			if ((record->flags & (MEM_Real | MEM_Int)))
-				sqlVdbeMemStringify(record, 1);
+				sqlVdbeMemStringify(record);
 		}
 		record->flags &= ~(MEM_Real | MEM_Int);
 		return 0;
@@ -2144,7 +2144,7 @@ case OP_Ge: {             /* same as TK_GE, jump, in1, in3 */
 			if ((flags1 & MEM_Str)==0 && (flags1 & (MEM_Int|MEM_Real))!=0) {
 				testcase( pIn1->flags & MEM_Int);
 				testcase( pIn1->flags & MEM_Real);
-				sqlVdbeMemStringify(pIn1, 1);
+				sqlVdbeMemStringify(pIn1);
 				testcase( (flags1&MEM_Dyn) != (pIn1->flags&MEM_Dyn));
 				flags1 = (pIn1->flags & ~MEM_TypeMask) | (flags1 & MEM_TypeMask);
 				assert(pIn1!=pIn3);
@@ -2152,7 +2152,7 @@ case OP_Ge: {             /* same as TK_GE, jump, in1, in3 */
 			if ((flags3 & MEM_Str)==0 && (flags3 & (MEM_Int|MEM_Real))!=0) {
 				testcase( pIn3->flags & MEM_Int);
 				testcase( pIn3->flags & MEM_Real);
-				sqlVdbeMemStringify(pIn3, 1);
+				sqlVdbeMemStringify(pIn3);
 				testcase( (flags3&MEM_Dyn) != (pIn3->flags&MEM_Dyn));
 				flags3 = (pIn3->flags & ~MEM_TypeMask) | (flags3 & MEM_TypeMask);
 			}

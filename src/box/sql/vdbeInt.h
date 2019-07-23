@@ -469,7 +469,7 @@ void sqlVdbeMemInit(Mem *, sql *, u32);
 void sqlVdbeMemSetNull(Mem *);
 void sqlVdbeMemSetZeroBlob(Mem *, int);
 int sqlVdbeMemMakeWriteable(Mem *);
-int sqlVdbeMemStringify(Mem *, u8);
+int sqlVdbeMemStringify(Mem *);
 int sqlVdbeIntValue(Mem *, int64_t *);
 int sqlVdbeMemIntegerify(Mem *, bool is_forced);
 int sqlVdbeRealValue(Mem *, double *);
