@@ -284,6 +284,23 @@ vy_lsm_delete(struct vy_lsm *lsm)
 	free(lsm);
 }
 
+void
+vy_lsm_update_format(struct vy_lsm *lsm, struct tuple_format *format)
+{
+	tuple_format_ref(format);
+	tuple_format_unref(lsm->mem_format);
+	lsm->mem_format = format;
+	/*
+	 * Disk format is the same across all secondary indexes
+	 * and it doesn't depend on the space format.
+	 */
+	if (lsm->index_id == 0) {
+		tuple_format_ref(format);
+		tuple_format_unref(lsm->disk_format);
+		lsm->disk_format = format;
+	}
+}
+
 int
 vy_lsm_create(struct vy_lsm *lsm)
 {

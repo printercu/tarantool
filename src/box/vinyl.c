@@ -1171,26 +1171,12 @@ vinyl_space_check_format(struct space *space, struct tuple_format *format)
 }
 
 static void
-vinyl_space_swap_index(struct space *old_space, struct space *new_space,
-		       uint32_t old_index_id, uint32_t new_index_id)
+vinyl_space_move_index(struct space *space, struct index *index)
 {
-	struct vy_lsm *old_lsm = vy_lsm(old_space->index_map[old_index_id]);
-	struct vy_lsm *new_lsm = vy_lsm(new_space->index_map[new_index_id]);
-
-	/*
-	 * Swap the two indexes between the two spaces,
-	 * but leave tuple formats.
-	 */
-	generic_space_swap_index(old_space, new_space,
-				 old_index_id, new_index_id);
-
-	SWAP(old_lsm, new_lsm);
-	SWAP(old_lsm->mem_format, new_lsm->mem_format);
-	SWAP(old_lsm->disk_format, new_lsm->disk_format);
-
-	/* Update pointer to the primary key. */
-	vy_lsm_update_pk(old_lsm, vy_lsm(old_space->index_map[0]));
-	vy_lsm_update_pk(new_lsm, vy_lsm(new_space->index_map[0]));
+	struct vy_lsm *lsm = vy_lsm(index);
+	struct vy_lsm *pk = vy_lsm(space_index(space, 0));
+	vy_lsm_update_pk(lsm, pk);
+	vy_lsm_update_format(lsm, space->format);
 }
 
 static int
@@ -4726,7 +4712,7 @@ static const struct space_vtab vinyl_space_vtab = {
 	/* .drop_primary_key = */ generic_space_drop_primary_key,
 	/* .check_format = */ vinyl_space_check_format,
 	/* .build_index = */ vinyl_space_build_index,
-	/* .swap_index = */ vinyl_space_swap_index,
+	/* .move_index = */ vinyl_space_move_index,
 	/* .prepare_alter = */ vinyl_space_prepare_alter,
 	/* .invalidate = */ vinyl_space_invalidate,
 };

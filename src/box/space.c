@@ -284,14 +284,6 @@ space_index_key_def(struct space *space, uint32_t id)
 }
 
 void
-generic_space_swap_index(struct space *old_space, struct space *new_space,
-			 uint32_t old_index_id, uint32_t new_index_id)
-{
-	SWAP(old_space->index_map[old_index_id],
-	     new_space->index_map[new_index_id]);
-}
-
-void
 space_run_triggers(struct space *space, bool yesno)
 {
 	space->run_triggers = yesno;
@@ -677,6 +669,13 @@ generic_space_build_index(struct space *src_space, struct index *new_index,
 	(void)new_format;
 	(void)check_unique;
 	return 0;
+}
+
+void
+generic_space_move_index(struct space *space, struct index *index)
+{
+	(void)space;
+	(void)index;
 }
 
 int

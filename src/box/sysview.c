@@ -506,7 +506,7 @@ static const struct space_vtab sysview_space_vtab = {
 	/* .drop_primary_key = */ generic_space_drop_primary_key,
 	/* .check_format = */ generic_space_check_format,
 	/* .build_index = */ generic_space_build_index,
-	/* .swap_index = */ generic_space_swap_index,
+	/* .move_index = */ generic_space_move_index,
 	/* .prepare_alter = */ generic_space_prepare_alter,
 	/* .invalidate = */ generic_space_invalidate,
 };

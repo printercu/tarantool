@@ -341,6 +341,15 @@ void
 vy_lsm_delete(struct vy_lsm *lsm);
 
 /**
+ * Update the formats referenced by the given LSM tree after
+ * it has been assigned to another space container on DDL.
+ * The new format must be compatible with tuples stored in
+ * the space.
+ */
+void
+vy_lsm_update_format(struct vy_lsm *lsm, struct tuple_format *format);
+
+/**
  * Return true if the LSM tree has no statements, neither on disk
  * nor in memory.
  */

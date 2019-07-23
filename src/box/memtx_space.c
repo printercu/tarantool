@@ -1165,7 +1165,7 @@ static const struct space_vtab memtx_space_vtab = {
 	/* .drop_primary_key = */ memtx_space_drop_primary_key,
 	/* .check_format  = */ memtx_space_check_format,
 	/* .build_index = */ memtx_space_build_index,
-	/* .swap_index = */ generic_space_swap_index,
+	/* .move_index = */ generic_space_move_index,
 	/* .prepare_alter = */ memtx_space_prepare_alter,
 	/* .invalidate = */ generic_space_invalidate,
 };

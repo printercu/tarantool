@@ -128,12 +128,12 @@ struct space_vtab {
 	int (*build_index)(struct space *src_space, struct index *new_index,
 			   struct tuple_format *new_format, bool check_unique);
 	/**
-	 * Exchange two index objects in two spaces. Used
-	 * to update a space with a newly built index, while
-	 * making sure the old index doesn't leak.
+	 * Called after assigning the given index to the space to
+	 * update engine-specific data that depends on the space
+	 * definition. E.g. the vinyl engine uses this method to
+	 * update tuple formats referenced by the index.
 	 */
-	void (*swap_index)(struct space *old_space, struct space *new_space,
-			   uint32_t old_index_id, uint32_t new_index_id);
+	void (*move_index)(struct space *space, struct index *index);
 	/**
 	 * Notify the engine about the changed space,
 	 * before it's done, to prepare 'new_space' object.
@@ -384,14 +384,6 @@ space_ephemeral_delete(struct space *space, const char *key)
 	return space->vtab->ephemeral_delete(space, key);
 }
 
-/**
- * Generic implementation of space_vtab::swap_index
- * that simply swaps the two indexes in index maps.
- */
-void
-generic_space_swap_index(struct space *old_space, struct space *new_space,
-			 uint32_t old_index_id, uint32_t new_index_id);
-
 static inline void
 init_system_space(struct space *space)
 {
@@ -437,12 +429,9 @@ space_build_index(struct space *src_space, struct index *new_index,
 }
 
 static inline void
-space_swap_index(struct space *old_space, struct space *new_space,
-		 uint32_t old_index_id, uint32_t new_index_id)
+space_move_index(struct space *space, struct index *index)
 {
-	assert(old_space->vtab == new_space->vtab);
-	return new_space->vtab->swap_index(old_space, new_space,
-					   old_index_id, new_index_id);
+	return space->vtab->move_index(space, index);
 }
 
 static inline int
@@ -519,6 +508,7 @@ void generic_space_drop_primary_key(struct space *space);
 int generic_space_check_format(struct space *, struct tuple_format *);
 int generic_space_build_index(struct space *, struct index *,
 			      struct tuple_format *, bool);
+void generic_space_move_index(struct space *, struct index *);
 int generic_space_prepare_alter(struct space *, struct space *);
 void generic_space_invalidate(struct space *);
 

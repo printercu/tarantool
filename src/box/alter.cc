@@ -1134,24 +1134,46 @@ DropIndex::commit(struct alter_space *alter, int64_t signature)
 class MoveIndex: public AlterSpaceOp
 {
 public:
-	MoveIndex(struct alter_space *alter, uint32_t iid_arg)
-		:AlterSpaceOp(alter), iid(iid_arg) {}
-	/** id of the index on the move. */
-	uint32_t iid;
+	MoveIndex(struct alter_space *alter, struct index *index)
+		: AlterSpaceOp(alter), old_index(index), new_index(NULL) {}
+	struct index *old_index;
+	struct index *new_index;
 	virtual void alter(struct alter_space *alter);
+	virtual void commit(struct alter_space *alter, int64_t lsn);
 	virtual void rollback(struct alter_space *alter);
 };
 
 void
 MoveIndex::alter(struct alter_space *alter)
 {
-	space_swap_index(alter->old_space, alter->new_space, iid, iid);
+	/*
+	 * Replace the new index with the old index in the new space,
+	 * but don't remove the old index from the old space so that
+	 * the old space stays valid. We must guarantee the validity
+	 * of the old space, because txn statements corresponding to
+	 * DML requests processed in the same transaction may still
+	 * use it for rollback.
+	 */
+	new_index = space_index(alter->new_space, old_index->def->iid);
+	alter->new_space->index_map[new_index->def->iid] = old_index;
+	space_move_index(alter->new_space, old_index);
+}
+
+void
+MoveIndex::commit(struct alter_space *alter, int64_t)
+{
+	/*
+	 * Assign the new index to the old space so that it gets
+	 * destroyed by the alter_space destructor.
+	 */
+	alter->old_space->index_map[old_index->def->iid] = new_index;
 }
 
 void
 MoveIndex::rollback(struct alter_space *alter)
 {
-	space_swap_index(alter->old_space, alter->new_space, iid, iid);
+	alter->new_space->index_map[new_index->def->iid] = new_index;
+	space_move_index(alter->old_space, old_index);
 }
 
 /**
@@ -1201,34 +1223,33 @@ ModifyIndex::alter(struct alter_space *alter)
 	new_index = space_index(alter->new_space, new_index_def->iid);
 	assert(old_index->def->iid == new_index->def->iid);
 	/*
-	 * Move the old index to the new space to preserve the
-	 * original data, but use the new definition.
+	 * Update the old index definition and copy it to the new
+	 * space. See also MoveIndex::alter.
 	 */
-	space_swap_index(alter->old_space, alter->new_space,
-			 old_index->def->iid, new_index->def->iid);
-	SWAP(old_index, new_index);
 	SWAP(old_index->def, new_index->def);
-	index_update_def(new_index);
+	index_update_def(old_index);
+	alter->new_space->index_map[new_index->def->iid] = old_index;
+	space_move_index(alter->new_space, old_index);
 }
 
 void
 ModifyIndex::commit(struct alter_space *alter, int64_t signature)
 {
-	(void)alter;
-	index_commit_modify(new_index, signature);
+	index_commit_modify(old_index, signature);
+	/*
+	 * Assign the new index to the old space so that it gets
+	 * destroyed by the alter_space destructor.
+	 */
+	alter->old_space->index_map[old_index->def->iid] = new_index;
 }
 
 void
 ModifyIndex::rollback(struct alter_space *alter)
 {
-	/*
-	 * Restore indexes.
-	 */
-	space_swap_index(alter->old_space, alter->new_space,
-			 old_index->def->iid, new_index->def->iid);
-	SWAP(old_index, new_index);
 	SWAP(old_index->def, new_index->def);
 	index_update_def(old_index);
+	alter->new_space->index_map[new_index->def->iid] = new_index;
+	space_move_index(alter->old_space, old_index);
 }
 
 ModifyIndex::~ModifyIndex()
@@ -1647,7 +1668,7 @@ alter_space_move_indexes(struct alter_space *alter, uint32_t begin,
 							     min_field_count);
 				(void) new ModifyIndex(alter, old_index, new_def);
 			} else {
-				(void) new MoveIndex(alter, old_def->iid);
+				(void) new MoveIndex(alter, old_index);
 			}
 			continue;
 		}
@@ -2251,7 +2272,7 @@ on_replace_dd_index(struct trigger * /* trigger */, void *event)
 		alter_space_move_indexes(alter, 0, iid);
 		if (index_def_cmp(index_def, old_index->def) == 0) {
 			/* Index is not changed so just move it. */
-			(void) new MoveIndex(alter, old_index->def->iid);
+			(void) new MoveIndex(alter, old_index);
 		} else if (index_def_change_requires_rebuild(old_index,
 							     index_def)) {
 			if (index_is_used_by_fk_constraint(&old_space->parent_fk_constraint,
