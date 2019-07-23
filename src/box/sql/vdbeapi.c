@@ -942,7 +942,7 @@ sql_bind_blob(sql_stmt * pStmt,
 	struct Mem *var = &p->aVar[i - 1];
 	if (sqlVdbeMemSetStr(var, zData, nData, 0, xDel) != 0)
 		return -1;
-	return sql_bind_type(p, i, "BLOB");
+	return sql_bind_type(p, i, "VARBINARY");
 }
 
 int
@@ -1014,7 +1014,7 @@ sql_bind_ptr(struct sql_stmt *stmt, int i, void *ptr)
 	struct Vdbe *p = (struct Vdbe *) stmt;
 	int rc = vdbeUnbind(p, i);
 	if (rc == 0) {
-		rc = sql_bind_type(p, i, "BLOB");
+		rc = sql_bind_type(p, i, "VARBINARY");
 		mem_set_ptr(&p->aVar[i - 1], ptr);
 	}
 	return rc;

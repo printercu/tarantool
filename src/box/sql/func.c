@@ -120,7 +120,7 @@ typeofFunc(sql_context * context, int NotUsed, sql_value ** argv)
 		z = "number";
 		break;
 	case MP_BIN:
-		z = "scalar";
+		z = "varbinary";
 		break;
 	case MP_BOOL:
 		z = "boolean";
@@ -249,7 +249,7 @@ position_func(struct sql_context *context, int argc, struct Mem **argv)
 	if (haystack_type != MP_STR && haystack_type != MP_BIN)
 		inconsistent_type_arg = haystack;
 	if (inconsistent_type_arg != NULL) {
-		diag_set(ClientError, ER_INCONSISTENT_TYPES, "TEXT or BLOB",
+		diag_set(ClientError, ER_INCONSISTENT_TYPES, "TEXT or VARBINARY",
 			 mem_type_to_str(inconsistent_type_arg));
 		context->is_aborted = true;
 		return;
