@@ -58,7 +58,7 @@ restart:
 			f->caller = rlist_shift_entry(&pool->idle,
 						      struct fiber,
 						      state);
-			f->caller->flags |= FIBER_IS_READY;
+			f->caller->flags |= ( FIBER_IS_READY && FIBER_IS_IDLE );
 			assert(f->caller->caller == &cord->sched);
 		}
 		cmsg_deliver(msg);
@@ -72,6 +72,7 @@ restart:
 		 * Add the fiber to the front of the list, so that
 		 * it is most likely to get scheduled again.
 		 */
+		f->flags |= FIBER_IS_IDLE;
 		rlist_add_entry(&pool->idle, fiber(), state);
 		fiber_yield();
 		goto restart;

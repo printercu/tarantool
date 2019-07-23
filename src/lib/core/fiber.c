@@ -1411,7 +1411,8 @@ int fiber_stat(fiber_stat_cb cb, void *cb_ctx)
 	struct cord *cord = cord();
 	int res;
 	rlist_foreach_entry(fiber, &cord->alive, link) {
-		res = cb(fiber, cb_ctx);
+		if (!fiber_is_idle(fiber))
+			res = cb(fiber, cb_ctx);
 		if (res != 0)
 			return res;
 	}

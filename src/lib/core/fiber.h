@@ -97,6 +97,10 @@ enum {
 	 * This flag is set when fiber uses custom stack size.
 	 */
 	FIBER_CUSTOM_STACK	= 1 << 5,
+	/*
+	*
+	*/
+	FIBER_IS_IDLE = 1 << 6,
 	FIBER_DEFAULT_FLAGS = FIBER_IS_CANCELLABLE
 };
 
@@ -618,6 +622,12 @@ static inline bool
 fiber_is_dead(struct fiber *f)
 {
 	return f->flags & FIBER_IS_DEAD;
+}
+
+static inline bool
+fiber_is_idle(struct fiber *f) 
+{
+	return f->flags & FIBER_IS_IDLE;
 }
 
 typedef int (*fiber_stat_cb)(struct fiber *f, void *ctx);
