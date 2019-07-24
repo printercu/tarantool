@@ -17,8 +17,9 @@ cache:
 git:
     depth: 100500
 
-env: >
-    TEST_RUN_EXTRA_PARAMS="-j 1"
+env:
+    global:
+      - TEST_RUN_EXTRA_PARAMS="-j 1"
 
 jobs:
     include:
