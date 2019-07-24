@@ -37,7 +37,7 @@ jobs:
         env: TARGET=test
         os: osx
         osx_image: xcode9.4
-        if: branch = "master"
+        #if: branch = "master"
       # Special targets for LTO.
       - name: "LTO build + test (Linux, gcc)"
         env: >
@@ -59,7 +59,7 @@ jobs:
       - name: "LTO build + test (OS X Mojave 10.14)"
         os: osx
         env: TARGET=test CMAKE_EXTRA_PARAMS=-DENABLE_LTO=ON
-        if: branch = "master"
+        #if: branch = "master"
       # Special targets for ASAN.
       - name: "ASAN build + test (Linux, clang8)"
         env: >

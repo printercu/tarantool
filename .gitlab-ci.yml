@@ -76,6 +76,7 @@ release_asan_clang8:
 osx_13_release:
   only:
     refs:
+      - /.*/
       - master
       - /^.*-full-ci$/
   stage: test
@@ -110,6 +111,7 @@ osx_14_release:
 osx_14_release_lto:
   only:
     refs:
+      - /.*/
       - master
       - /^.*-full-ci$/
   stage: test
