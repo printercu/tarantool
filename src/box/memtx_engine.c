@@ -1248,7 +1248,7 @@ memtx_index_def_change_requires_rebuild(struct index *index,
 		return true;
 	if (!old_def->opts.is_unique && new_def->opts.is_unique)
 		return true;
-	if (old_def->opts.functional_fid != new_def->opts.functional_fid)
+	if (old_def->opts.func_id != new_def->opts.func_id)
 		return true;
 
 	const struct key_def *old_cmp_def, *new_cmp_def;

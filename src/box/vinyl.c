@@ -991,7 +991,7 @@ vinyl_index_def_change_requires_rebuild(struct index *index,
 
 	if (!old_def->opts.is_unique && new_def->opts.is_unique)
 		return true;
-	if (old_def->opts.functional_fid != new_def->opts.functional_fid)
+	if (old_def->opts.func_id != new_def->opts.func_id)
 		return true;
 
 	assert(index_depends_on_pk(index));

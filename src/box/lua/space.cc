@@ -335,8 +335,8 @@ lbox_fillspace(struct lua_State *L, struct space *space, int i)
 			lua_setfield(L, -2, "dimension");
 		}
 
-		if (index_opts->functional_fid > 0) {
-			lua_pushnumber(L, index_opts->functional_fid);
+		if (index_opts->func_id > 0) {
+			lua_pushnumber(L, index_opts->func_id);
 			lua_setfield(L, -2, "func_id");
 		}
 

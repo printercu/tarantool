@@ -236,8 +236,8 @@ index_opts_decode(struct index_opts *opts, const char *map,
 	 * had not been registered in Tarantool yet.
 	 */
 	struct memtx_engine *engine = (struct memtx_engine *)space->engine;
-	if (opts->functional_fid > 0 && engine->state == MEMTX_OK) {
-		struct func *func = func_cache_find(opts->functional_fid);
+	if (opts->func_id > 0 && engine->state == MEMTX_OK) {
+		struct func *func = func_cache_find(opts->func_id);
 		if (func->def->language != FUNC_LANGUAGE_LUA ||
 		    func->def->body == NULL || !func->def->is_deterministic ||
 		    !func->def->is_sandboxed) {
@@ -302,7 +302,7 @@ index_def_new_from_tuple(struct tuple *tuple, struct space *space)
 				 space->def->fields,
 				 space->def->field_count, &fiber()->gc) != 0)
 		diag_raise();
-	key_def = key_def_new(part_def, part_count, opts.functional_fid > 0);
+	key_def = key_def_new(part_def, part_count, opts.func_id > 0);
 	if (key_def == NULL)
 		diag_raise();
 	struct index_def *index_def =
@@ -1388,14 +1388,14 @@ RebuildIndex::~RebuildIndex()
 }
 
 /**
- * RebuildFunctionalIndex - prepare functional index definition,
+ * RebuildFuncIndex - prepare functional index definition,
  * drop the old index data and rebuild index from by reading the
  * primary key.
  */
-class RebuildFunctionalIndex: public RebuildIndex
+class RebuildFuncIndex: public RebuildIndex
 {
 	struct index_def *
-	functional_index_def_new(struct index_def *index_def,
+	func_index_def_new(struct index_def *index_def,
 				 struct func *func)
 	{
 		struct index_def *new_index_def = index_def_dup_xc(index_def);
@@ -1403,11 +1403,11 @@ class RebuildFunctionalIndex: public RebuildIndex
 		return new_index_def;
 	}
 public:
-	RebuildFunctionalIndex(struct alter_space *alter,
+	RebuildFuncIndex(struct alter_space *alter,
 			       struct index_def *old_index_def_arg,
 			       struct func *func) :
 		RebuildIndex(alter,
-			     functional_index_def_new(old_index_def_arg, func),
+			     func_index_def_new(old_index_def_arg, func),
 			     old_index_def_arg) {}
 };
 
@@ -4776,7 +4776,7 @@ on_replace_dd_func_index(struct trigger *trigger, void *event)
 	alter = alter_space_new(space);
 	auto scoped_guard = make_scoped_guard([=] {alter_space_delete(alter);});
 	alter_space_move_indexes(alter, 0, index->def->iid);
-	(void) new RebuildFunctionalIndex(alter, index->def, func);
+	(void) new RebuildFuncIndex(alter, index->def, func);
 	alter_space_move_indexes(alter, index->def->iid + 1,
 				 space->index_id_max + 1);
 	(void) new MoveCkConstraints(alter);
