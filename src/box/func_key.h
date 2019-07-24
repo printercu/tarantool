@@ -45,14 +45,14 @@ struct tuple;
 
 /**
  * Execute a given function (a functional index function) and
- * return an extracted key_data and key_data_sz and count of
- * extracted keys.
+ * return a MsgPack array of with keys. Each key is a MsgPack
+ * array as well.
  *
- * Returns not NULL key_data pointer in case of success.
- * Routine allocates memory on fiber's region.
+ * Returns a non-NULL pointer in case of success.
+ * Uses fiber region to allocate memory.
  */
 const char *
-func_key_extract(struct tuple *tuple, struct func *func,
+func_key_build(struct tuple *tuple, struct func *func,
 		 const char **data_end, uint32_t *key_count);
 
 /**
@@ -100,13 +100,13 @@ func_key_iterator_next(struct func_key_iterator *it, const char **key,
 		       uint32_t *key_sz);
 
 /**
- * Allocate a new func_key_hint for given tuple and return a
- * pointer to the hint value memory.
+ * Allocate a new func_key hint for a given tuple and return a
+ * pointer to the hint memory.
  */
 hint_t
 func_key_hint_new(struct tuple *tuple, const char *key, uint32_t key_sz);
 
-/** Release a given func_key_hint memory chunk. */
+/** Release a given func_key hint memory chunk. */
 void
 func_key_hint_delete(struct tuple *tuple, hint_t func_key_hint);
 

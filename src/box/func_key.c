@@ -40,7 +40,7 @@
 #include "tuple_compare.h"
 
 const char *
-func_key_extract(struct tuple *tuple, struct func *func,
+func_key_build(struct tuple *tuple, struct func *func,
 		 const char **data_end, uint32_t *key_count)
 {
 	struct port out_port, in_port;

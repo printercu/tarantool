@@ -862,8 +862,8 @@ memtx_tree_index_replace_functional(struct index *base, struct tuple *old_tuple,
 	uint32_t key_sz, key_cnt;
 	struct func_key_iterator it;
 	if (new_tuple != NULL) {
-		key = func_key_extract(new_tuple, cmp_def->func_index_func,
-				       &key_end, &key_cnt);
+		key = func_key_build(new_tuple, cmp_def->func_index_func,
+				     &key_end, &key_cnt);
 		if (key == NULL)
 			goto end;
 
@@ -924,8 +924,8 @@ memtx_tree_index_replace_functional(struct index *base, struct tuple *old_tuple,
 						journal, journal_idx);
 	}
 	if (old_tuple != NULL) {
-		key = func_key_extract(old_tuple, cmp_def->func_index_func,
-				       &key_end, &key_cnt);
+		key = func_key_build(old_tuple, cmp_def->func_index_func,
+				     &key_end, &key_cnt);
 		if (key == NULL)
 			goto end;
 		struct memtx_tree_data data, deleted_data;
@@ -1097,8 +1097,8 @@ memtx_tree_index_build_next_functional(struct index *base, struct tuple *tuple)
 
 	uint32_t key_sz, key_cnt;
 	const char *key, *key_end;
-	key = func_key_extract(tuple, cmp_def->func_index_func,
-				&key_end, &key_cnt);
+	key = func_key_build(tuple, cmp_def->func_index_func,
+			     &key_end, &key_cnt);
 	if (key == NULL)
 		return -1;
 
