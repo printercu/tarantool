@@ -1,5 +1,5 @@
-#ifndef TARANTOOL_BOX_FUNC_KEY_H_INCLUDED
-#define TARANTOOL_BOX_FUNC_KEY_H_INCLUDED
+#ifndef TARANTOOL_BOX_KEY_LIST_H_INCLUDED
+#define TARANTOOL_BOX_KEY_LIST_H_INCLUDED
 /*
  * Copyright 2010-2019, Tarantool AUTHORS, please see AUTHORS file.
  *
@@ -52,14 +52,14 @@ struct tuple;
  * Uses fiber region to allocate memory.
  */
 const char *
-func_key_build(struct tuple *tuple, struct func *func,
-		 const char **data_end, uint32_t *key_count);
+key_list_create(struct tuple *tuple, struct func *func,
+		const char **data_end, uint32_t *key_count);
 
 /**
  * An iterator to iterate over the key_data returned by function
  * and validate it with given key definition (when required).
  */
-struct func_key_iterator {
+struct key_list_iterator {
 	/** The pointer to currently processed key. */
 	const char *data;
 	/** The pointer to the end of extracted key_data. */
@@ -78,7 +78,7 @@ struct func_key_iterator {
  * iterator.
  */
 static inline void
-func_key_iterator_create(struct func_key_iterator *it, const char *data,
+key_list_iterator_create(struct key_list_iterator *it, const char *data,
 			 const char *data_end, struct key_def *key_def,
 			 bool validate)
 {
@@ -96,22 +96,22 @@ func_key_iterator_create(struct func_key_iterator *it, const char *data,
  * the corresponding diag message.
  */
 int
-func_key_iterator_next(struct func_key_iterator *it, const char **key,
+key_list_iterator_next(struct key_list_iterator *it, const char **key,
 		       uint32_t *key_sz);
 
 /**
- * Allocate a new key_list.hint for a given tuple and return a
+ * Allocate a new key hint for a given tuple and return a
  * pointer to the hint memory.
  */
 hint_t
-key_list.hint_new(struct tuple *tuple, const char *key, uint32_t key_sz);
+key_hint_new(struct tuple *tuple, const char *key, uint32_t key_sz);
 
 /** Release a given key_list.hint memory chunk. */
 void
-key_list.hint_delete(struct tuple *tuple, hint_t key_list.hint);
+key_hint_delete(struct tuple *tuple, hint_t hint);
 
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
 
-#endif /* TARANTOOL_BOX_FUNC_KEY_H_INCLUDED */
+#endif /* TARANTOOL_BOX_KEY_LIST_H_INCLUDED */

@@ -771,18 +771,18 @@ memtx_tree_index_replace_multikey(struct index *base, struct tuple *old_tuple,
 }
 
 
-/** Release a memory is allocated for key_list.hint. */
+/** Release memory allocated for key_hint. */
 static void
-memtx_tree_data_func_hint_destructor(struct memtx_tree_data *data)
+key_hint_destroy(struct memtx_tree_data *data)
 {
-	key_list.hint_delete(data->tuple, data->hint);
+	key_hint_delete(data->tuple, data->hint);
 }
 
 /**
- * The journal for multikey functional index replace operatoin
+ * The journal for multikey functional index replace operation
  * is required to rollback an incomplete action, restore the
- * original key_list.hint(s) hints bouth as to commit a completed
- * replace action and destruct useless key_list.hint(s) hints.
+ * original key_hint(s) hints both as to commit a completed
+ * replace action and destruct useless key_hint(s).
 */
 struct journal_entry {
 	/** An inserted record copy. */
@@ -809,7 +809,7 @@ memtx_tree_index_replace_functional_rollback(struct memtx_tree_index *index,
 			memtx_tree_delete_value(&index->tree,
 						journal[i].inserted, NULL);
 		}
-		memtx_tree_data_func_hint_destructor(&journal[i].inserted);
+		key_hint_destroy(&journal[i].inserted);
 	}
 }
 
@@ -827,21 +827,20 @@ memtx_tree_index_replace_functional_commit(struct memtx_tree_index *index,
 	for (int i = 0; i < journal_sz; i++) {
 		if (journal[i].replaced.tuple == NULL)
 			continue;
-		memtx_tree_data_func_hint_destructor(&journal[i].replaced);
+		key_hint_destroy(&journal[i].replaced);
 	}
 }
 
 /**
- * Functional index replace method works like
- * memtx_tree_index_replace_multikey exept few moments.
- * It uses functional index function from key definition
- * to evaluate a key and allocate it on region. Then each
- * returned key is reallocated in engine's memory as
- * key_list.hint object and is used as comparison hint.
- * To control key_list.hint(s) lifecycle in case of functional
+ * @sa memtx_tree_index_replace_multikey().
+ * Use functional index function from the key definition
+ * to build a key list. Then each returned key is reallocated in
+ * engine's memory as key_hint object and is used as comparison
+ * hint.
+ * To control key_hint(s) life cycle in case of functional
  * index we use a tiny journal object is allocated on region.
  * It allows to restore original nodes with their original
- * key_list.hint(s) pointers in case of failure and release
+ * key_hint(s) pointers in case of failure and release
  * useless hints of replaced items in case of success.
  */
 static int
@@ -858,13 +857,14 @@ memtx_tree_index_replace_functional(struct index *base, struct tuple *old_tuple,
 	size_t region_svp = region_used(region);
 
 	*result = NULL;
-	const char *key, *key_end;
-	uint32_t key_sz, key_cnt;
-	struct func_key_iterator it;
+	const char *key_list_end;
+	const char *key_list;
+	uint32_t key_cnt;
+	struct key_list_iterator it;
 	if (new_tuple != NULL) {
-		key = func_key_build(new_tuple, cmp_def->func_index_func,
-				     &key_end, &key_cnt);
-		if (key == NULL)
+		key_list = key_list_create(new_tuple, cmp_def->func_index_func,
+					   &key_list_end, &key_cnt);
+		if (key_list == NULL)
 			goto end;
 
 		int journal_idx = 0;
@@ -877,11 +877,12 @@ memtx_tree_index_replace_functional(struct index *base, struct tuple *old_tuple,
 		}
 
 		int err = 0;
-		func_key_iterator_create(&it, key, key_end, cmp_def, true);
-		while (func_key_iterator_next(&it, &key, &key_sz) == 0 &&
+		key_list_iterator_create(&it, key_list, key_list_end, cmp_def, true);
+		const char *key;
+		uint32_t key_sz;
+		while (key_list_iterator_next(&it, &key, &key_sz) == 0 &&
 		       key != NULL) {
-			hint_t key_hint = key_list.hint_new(new_tuple, key,
-							    key_sz);
+			hint_t key_hint = key_hint_new(new_tuple, key, key_sz);
 			if (key_hint == HINT_NONE) {
 				err = -1;
 				break;
@@ -924,14 +925,16 @@ memtx_tree_index_replace_functional(struct index *base, struct tuple *old_tuple,
 						journal, journal_idx);
 	}
 	if (old_tuple != NULL) {
-		key = func_key_build(old_tuple, cmp_def->func_index_func,
-				     &key_end, &key_cnt);
-		if (key == NULL)
+		key_list = key_list_create(old_tuple, cmp_def->func_index_func,
+					   &key_list_end, &key_cnt);
+		if (key_list == NULL)
 			goto end;
 		struct memtx_tree_data data, deleted_data;
 		data.tuple = old_tuple;
-		func_key_iterator_create(&it, key, key_end, cmp_def, true);
-		while (func_key_iterator_next(&it, &key, &key_sz) == 0 &&
+		key_list_iterator_create(&it, key_list, key_list_end, cmp_def, true);
+		const char *key;
+		uint32_t key_sz;
+		while (key_list_iterator_next(&it, &key, &key_sz) == 0 &&
 		       key != NULL) {
 			data.hint = (hint_t) key; /* Raw data. */
 			deleted_data.tuple = NULL;
@@ -942,8 +945,7 @@ memtx_tree_index_replace_functional(struct index *base, struct tuple *old_tuple,
 				 * Release related hint on
 				 * successfull node deletion.
 				 */
-				memtx_tree_data_func_hint_destructor(
-								&deleted_data);
+				key_hint_destroy(&deleted_data);
 			}
 		}
 		assert(key == NULL);
@@ -1095,18 +1097,21 @@ memtx_tree_index_build_next_functional(struct index *base, struct tuple *tuple)
 	struct region *region = &fiber()->gc;
 	size_t region_svp = region_used(region);
 
-	uint32_t key_sz, key_cnt;
-	const char *key, *key_end;
-	key = func_key_build(tuple, cmp_def->func_index_func,
-			     &key_end, &key_cnt);
-	if (key == NULL)
+	uint32_t key_cnt;
+	const char *key_list;
+	const char *key_list_end;
+	key_list = key_list_create(tuple, cmp_def->func_index_func,
+				   &key_list_end, &key_cnt);
+	if (key_list == NULL)
 		return -1;
 
 	uint32_t insert_idx = index->build_array_size;
-	struct func_key_iterator it;
-	func_key_iterator_create(&it, key, key_end, cmp_def, true);
-	while (func_key_iterator_next(&it, &key, &key_sz) == 0 && key != NULL) {
-		hint_t key_hint = key_list.hint_new(tuple, key, key_sz);
+	struct key_list_iterator it;
+	key_list_iterator_create(&it, key_list, key_list_end, cmp_def, true);
+	const char *key;
+	uint32_t key_sz;
+	while (key_list_iterator_next(&it, &key, &key_sz) == 0 && key != NULL) {
+		hint_t key_hint = key_hint_new(tuple, key, key_sz);
 		if (key_hint == HINT_NONE)
 			goto error;
 		if (memtx_tree_index_build_array_append(index, tuple,
@@ -1118,7 +1123,7 @@ memtx_tree_index_build_next_functional(struct index *base, struct tuple *tuple)
 	return 0;
 error:
 	for (uint32_t i = insert_idx; i < index->build_array_size; i++)
-		memtx_tree_data_func_hint_destructor(&index->build_array[i]);
+		key_hint_destroy(&index->build_array[i]);
 	region_truncate(region, region_svp);
 	return -1;
 }
@@ -1179,8 +1184,7 @@ memtx_tree_index_end_build(struct index *base)
 		 */
 		memtx_tree_index_build_array_deduplicate(index, NULL);
 	} else if (key_def_is_functional(cmp_def)) {
-		memtx_tree_index_build_array_deduplicate(index,
-				memtx_tree_data_func_hint_destructor);
+		memtx_tree_index_build_array_deduplicate(index, key_hint_destroy);
 	}
 	memtx_tree_build(&index->tree, index->build_array,
 			 index->build_array_size);
