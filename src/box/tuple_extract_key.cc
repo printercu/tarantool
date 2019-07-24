@@ -120,7 +120,7 @@ tuple_extract_key_slowpath(struct tuple *tuple, struct key_def *key_def,
 	       key_def_contains_sequential_parts(key_def));
 	assert(is_multikey == key_def->is_multikey);
 	assert(!key_def->is_multikey || multikey_idx != MULTIKEY_NONE);
-	assert(!key_def_is_functional(key_def));
+	assert(!key_def_is_for_func_index(key_def));
 	assert(mp_sizeof_nil() == 1);
 	const char *data = tuple_data(tuple);
 	uint32_t part_count = key_def->part_count;
@@ -252,7 +252,7 @@ tuple_extract_key_slowpath_raw(const char *data, const char *data_end,
 	assert(!has_optional_parts || key_def->is_nullable);
 	assert(has_optional_parts == key_def->has_optional_parts);
 	assert(!key_def->is_multikey || multikey_idx != MULTIKEY_NONE);
-	assert(!key_def_is_functional(key_def));
+	assert(!key_def_is_for_func_index(key_def));
 	assert(mp_sizeof_nil() == 1);
 	/* allocate buffer with maximal possible size */
 	char *key = (char *) region_alloc(&fiber()->gc, data_end - data);
@@ -369,7 +369,7 @@ key_def_set_extract_func_plain(struct key_def *def)
 {
 	assert(!def->has_json_paths);
 	assert(!def->is_multikey);
-	assert(!key_def_is_functional(def));
+	assert(!key_def_is_for_func_index(def));
 	if (key_def_is_sequential(def)) {
 		assert(contains_sequential_parts || def->part_count == 1);
 		def->tuple_extract_key = tuple_extract_key_sequential
@@ -390,7 +390,7 @@ static void
 key_def_set_extract_func_json(struct key_def *def)
 {
 	assert(def->has_json_paths);
-	assert(!key_def_is_functional(def));
+	assert(!key_def_is_for_func_index(def));
 	if (def->is_multikey) {
 		def->tuple_extract_key = tuple_extract_key_slowpath
 					<contains_sequential_parts,
@@ -430,7 +430,7 @@ key_def_set_extract_func(struct key_def *key_def)
 	bool contains_sequential_parts =
 		key_def_contains_sequential_parts(key_def);
 	bool has_optional_parts = key_def->has_optional_parts;
-	if (key_def_is_functional(key_def)) {
+	if (key_def_is_for_func_index(key_def)) {
 		key_def->tuple_extract_key = tuple_extract_key_stub;
 		key_def->tuple_extract_key_raw = tuple_extract_key_raw_stub;
 	} else if (!key_def->has_json_paths) {

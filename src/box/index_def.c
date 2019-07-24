@@ -258,7 +258,7 @@ index_def_to_key_def(struct rlist *index_defs, int *size)
 		 * Don't use functional index key definition
 		 * to build a space format.
 		 */
-		if (key_def_is_functional(index_def->key_def))
+		if (key_def_is_for_func_index(index_def->key_def))
 			continue;
 		key_count++;
 	}
@@ -272,7 +272,7 @@ index_def_to_key_def(struct rlist *index_defs, int *size)
 	*size = key_count;
 	key_count = 0;
 	rlist_foreach_entry(index_def, index_defs, link) {
-		if (key_def_is_functional(index_def->key_def))
+		if (key_def_is_for_func_index(index_def->key_def))
 			continue;
 		keys[key_count++] = index_def->key_def;
 	}
@@ -308,7 +308,7 @@ index_def_is_valid(struct index_def *index_def, const char *space_name)
 			 space_name, "primary key cannot be multikey");
 		return false;
 	}
-	if (index_def->iid == 0 && key_def_is_functional(index_def->key_def)) {
+	if (index_def->iid == 0 && key_def_is_for_func_index(index_def->key_def)) {
 		diag_set(ClientError, ER_MODIFY_INDEX, index_def->name,
 			space_name, "primary key cannot be functional");
 		return false;

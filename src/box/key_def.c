@@ -279,7 +279,7 @@ key_def_new(const struct key_part_def *parts, uint32_t part_count,
 			goto error;
 	}
 	if (is_functional) {
-		def->functional_part_count = part_count;
+		def->part_count_for_func_index = part_count;
 		if (!key_def_is_sequential(def) || parts->fieldno != 0 ||
 		    def->has_json_paths) {
 			diag_set(ClientError, ER_WRONG_INDEX_OPTIONS, 0,
@@ -686,7 +686,7 @@ key_def_find_by_fieldno(const struct key_def *key_def, uint32_t fieldno)
 const struct key_part *
 key_def_find(const struct key_def *key_def, const struct key_part *to_find)
 {
-	assert(!key_def_is_functional(key_def));
+	assert(!key_def_is_for_func_index(key_def));
 	const struct key_part *part = key_def->parts;
 	const struct key_part *end = part + key_def->part_count;
 	for (; part != end; part++) {
@@ -718,7 +718,7 @@ static bool
 key_def_can_merge(const struct key_def *key_def,
 		  const struct key_part *to_merge)
 {
-	if (key_def_is_functional(key_def))
+	if (key_def_is_for_func_index(key_def))
 		return true;
 
 	const struct key_part *part = key_def_find(key_def, to_merge);
@@ -735,7 +735,7 @@ key_def_can_merge(const struct key_def *key_def,
 struct key_def *
 key_def_merge(const struct key_def *first, const struct key_def *second)
 {
-	assert(!key_def_is_functional(second));
+	assert(!key_def_is_for_func_index(second));
 	uint32_t new_part_count = first->part_count + second->part_count;
 	/*
 	 * Find and remove part duplicates, i.e. parts counted
@@ -768,7 +768,7 @@ key_def_merge(const struct key_def *first, const struct key_def *second)
 	new_def->has_optional_parts = first->has_optional_parts ||
 				      second->has_optional_parts;
 	new_def->is_multikey = first->is_multikey || second->is_multikey;
-	new_def->functional_part_count = first->functional_part_count;
+	new_def->part_count_for_func_index = first->part_count_for_func_index;
 	new_def->func_index_func = first->func_index_func;
 
 	/* JSON paths data in the new key_def. */

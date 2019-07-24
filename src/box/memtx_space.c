@@ -659,7 +659,7 @@ memtx_space_check_index_def(struct space *space, struct index_def *index_def)
 				 "HASH index cannot be multikey");
 			return -1;
 		}
-		if (key_def_is_functional(index_def->key_def)) {
+		if (key_def_is_for_func_index(index_def->key_def)) {
 			diag_set(ClientError, ER_MODIFY_INDEX,
 				 index_def->name, space_name(space),
 				 "HASH index cannot be functional");
@@ -694,7 +694,7 @@ memtx_space_check_index_def(struct space *space, struct index_def *index_def)
 				 "RTREE index cannot be multikey");
 			return -1;
 		}
-		if (key_def_is_functional(index_def->key_def)) {
+		if (key_def_is_for_func_index(index_def->key_def)) {
 			diag_set(ClientError, ER_MODIFY_INDEX,
 				 index_def->name, space_name(space),
 				 "RTREE index cannot be functional");
@@ -728,7 +728,7 @@ memtx_space_check_index_def(struct space *space, struct index_def *index_def)
 				 "BITSET index cannot be multikey");
 			return -1;
 		}
-		if (key_def_is_functional(index_def->key_def)) {
+		if (key_def_is_for_func_index(index_def->key_def)) {
 			diag_set(ClientError, ER_MODIFY_INDEX,
 				 index_def->name, space_name(space),
 				 "BITSET index cannot be functional");

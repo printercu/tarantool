@@ -850,7 +850,7 @@ memtx_tree_index_replace_functional(struct index *base, struct tuple *old_tuple,
 {
 	struct memtx_tree_index *index = (struct memtx_tree_index *)base;
 	struct key_def *cmp_def = memtx_tree_cmp_def(&index->tree);
-	assert(key_def_is_functional(cmp_def));
+	assert(key_def_is_for_func_index(cmp_def));
 
 	int rc = -1;
 	struct region *region = &fiber()->gc;
@@ -1092,7 +1092,7 @@ memtx_tree_index_build_next_functional(struct index *base, struct tuple *tuple)
 {
 	struct memtx_tree_index *index = (struct memtx_tree_index *)base;
 	struct key_def *cmp_def = memtx_tree_cmp_def(&index->tree);
-	assert(key_def_is_functional(cmp_def));
+	assert(key_def_is_for_func_index(cmp_def));
 
 	struct region *region = &fiber()->gc;
 	size_t region_svp = region_used(region);
@@ -1183,7 +1183,7 @@ memtx_tree_index_end_build(struct index *base)
 		 * all keys are unique.
 		 */
 		memtx_tree_index_build_array_deduplicate(index, NULL);
-	} else if (key_def_is_functional(cmp_def)) {
+	} else if (key_def_is_for_func_index(cmp_def)) {
 		memtx_tree_index_build_array_deduplicate(index, key_hint_destroy);
 	}
 	memtx_tree_build(&index->tree, index->build_array,
@@ -1388,7 +1388,7 @@ memtx_tree_index_new(struct memtx_engine *memtx, struct index_def *def)
 		return NULL;
 	}
 	const struct index_vtab *vtab;
-	if (key_def_is_functional(def->key_def)) {
+	if (key_def_is_for_func_index(def->key_def)) {
 		if (def->key_def->func_index_func == NULL)
 			vtab = &memtx_tree_index_disabled_vtab;
 		else

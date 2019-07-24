@@ -701,7 +701,7 @@ vinyl_space_check_index_def(struct space *space, struct index_def *index_def)
 			return -1;
 		}
 	}
-	if (key_def_is_functional(index_def->key_def)) {
+	if (key_def_is_for_func_index(index_def->key_def)) {
 		diag_set(ClientError, ER_UNSUPPORTED, "Vinyl",
 			  "functional indexes");
 		return -1;

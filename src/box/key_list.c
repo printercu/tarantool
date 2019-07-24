@@ -61,7 +61,7 @@ key_list_create(struct tuple *tuple, struct func *func,
 	*key_count = mp_decode_array(&key_data);
 	return key_data;
 error:
-	diag_set(ClientError, ER_FUNCTIONAL_INDEX_FUNC_ERROR, func->def->name,
+	diag_set(ClientError, ER_FUNC_INDEX_FUNC, func->def->name,
 		 diag_last_error(diag_get())->errmsg);
 	return NULL;
 }
@@ -85,26 +85,26 @@ key_list_iterator_next(struct key_list_iterator *it, const char **key,
 	}
 
 	if (mp_typeof(*it->data) != MP_ARRAY) {
-		diag_set(ClientError, ER_FUNCTIONAL_INDEX_FUNC_ERROR,
+		diag_set(ClientError, ER_FUNC_INDEX_FUNC,
 			 it->key_def->func_index_func->def->name,
 			 "returned key type is invalid");
 		return -1;
 	}
 	const char *rptr = *key;
 	uint32_t part_count = mp_decode_array(&rptr);
-	uint32_t functional_part_count = it->key_def->functional_part_count;
-	if (part_count != functional_part_count) {
+	if (part_count != it->key_def->part_count_for_func_index) {
 		const char *error_msg =
 			tt_sprintf(tnt_errcode_desc(ER_EXACT_MATCH),
-				   functional_part_count, part_count);
-		diag_set(ClientError, ER_FUNCTIONAL_INDEX_FUNC_ERROR,
+				   it->key_def->part_count_for_func_index,
+				   part_count);
+		diag_set(ClientError, ER_FUNC_INDEX_FUNC,
 			 it->key_def->func_index_func->def->name, error_msg);
 		return -1;
 	}
 	const char *key_end;
-	if (key_validate_parts(it->key_def, rptr, functional_part_count, true,
+	if (key_validate_parts(it->key_def, rptr, part_count, true,
 			       &key_end) != 0) {
-		diag_set(ClientError, ER_FUNCTIONAL_INDEX_FUNC_ERROR,
+		diag_set(ClientError, ER_FUNC_INDEX_FUNC,
 			 it->key_def->func_index_func->def->name,
 			 diag_last_error(diag_get())->errmsg);
 		return -1;

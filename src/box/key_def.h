@@ -193,12 +193,12 @@ struct key_def {
 	 */
 	uint32_t unique_part_count;
 	/**
-	 * Count of parts in functional index defintion.
-	 * All functional_part_count key_part(s) of an
+	 * Count of parts in functional index definition.
+	 * All part_count_for_func_index key_part(s) of an
 	 * initialized key def instance have func != NULL pointer.
 	 * != 0 iff it is functional index definition.
 	*/
-	uint32_t functional_part_count;
+	uint32_t part_count_for_func_index;
 	/** True, if at least one part can store NULL. */
 	bool is_nullable;
 	/** True if some key part has JSON path. */
@@ -356,9 +356,9 @@ key_def_dump_parts(const struct key_def *def, struct key_part_def *parts,
  * key.
  */
 static inline bool
-key_def_is_functional(const struct key_def *key_def)
+key_def_is_for_func_index(const struct key_def *key_def)
 {
-	return key_def->functional_part_count > 0;
+	return key_def->part_count_for_func_index > 0;
 }
 
 /**
