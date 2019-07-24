@@ -28,7 +28,7 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#include "func_key.h"
+#include "key_list.h"
 
 #include "errcode.h"
 #include "diag.h"
@@ -116,7 +116,7 @@ func_key_iterator_next(struct func_key_iterator *it, const char **key,
 }
 
 hint_t
-func_key_hint_new(struct tuple *tuple, const char *key, uint32_t key_sz)
+key_list.hint_new(struct tuple *tuple, const char *key, uint32_t key_sz)
 {
 	struct tuple_chunk *chunk = tuple_chunk_new(tuple, key_sz);
 	if (chunk == NULL)
@@ -126,10 +126,10 @@ func_key_hint_new(struct tuple *tuple, const char *key, uint32_t key_sz)
 }
 
 void
-func_key_hint_delete(struct tuple *tuple, hint_t func_key_hint)
+key_list.hint_delete(struct tuple *tuple, hint_t key_list.hint)
 {
 	struct tuple_chunk *chunk =
-		container_of((typeof(chunk->data) *)func_key_hint,
+		container_of((typeof(chunk->data) *)key_list.hint,
 			     struct tuple_chunk, data);
 	tuple_chunk_delete(tuple, chunk);
 }

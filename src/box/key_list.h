@@ -100,15 +100,15 @@ func_key_iterator_next(struct func_key_iterator *it, const char **key,
 		       uint32_t *key_sz);
 
 /**
- * Allocate a new func_key hint for a given tuple and return a
+ * Allocate a new key_list.hint for a given tuple and return a
  * pointer to the hint memory.
  */
 hint_t
-func_key_hint_new(struct tuple *tuple, const char *key, uint32_t key_sz);
+key_list.hint_new(struct tuple *tuple, const char *key, uint32_t key_sz);
 
-/** Release a given func_key hint memory chunk. */
+/** Release a given key_list.hint memory chunk. */
 void
-func_key_hint_delete(struct tuple *tuple, hint_t func_key_hint);
+key_list.hint_delete(struct tuple *tuple, hint_t key_list.hint);
 
 #ifdef __cplusplus
 } /* extern "C" */
